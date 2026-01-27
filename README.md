@@ -1,0 +1,256 @@
+# WannaV 生徒様特典自動送付システム
+
+## 📋 概要
+
+WannaV VTuber育成スクールの生徒様が入会してから一定期間経過するごとにランクアップし、ランクに応じた特典メッセージを自動的にDiscordに送信するシステムです。
+
+## ✨ 主な機能
+
+### 1. 自動ランク判定
+- **10日達成**: 入会日から10日経過時点
+- **ビギナーⅠ**: レッスン開始月の月初
+- **ビギナーⅡ**: レッスン2ヶ月目の月初
+- **ビギナーⅢ**: レッスン3ヶ月目の月初
+- **ブロンズ**: レッスン4ヶ月目の月初
+- **シルバー**: レッスン7ヶ月目の月初
+- **ゴールド**: レッスン13ヶ月目の月初
+- **プラチナ**: レッスン19ヶ月目の月初（今後追加予定）
+- **ブラック**: レッスン25ヶ月目の月初（今後追加予定）
+
+### 2. プラン別メッセージ送信
+- スタンダードプラン専用メッセージ
+- プレミアムプラン専用メッセージ
+
+### 3. 定期実行
+- 毎日午後5時（日本時間）に自動実行
+- 手動実行も可能
+
+### 4. 管理画面
+- 送信履歴の確認
+- 生徒別の最新状態表示
+- 送信ログの閲覧（直近50件）
+
+## 🗂️ プロジェクト構成
+
+```
+webapp/
+├── src/
+│   ├── index.js                    # メインサーバー（Express + Cron）
+│   ├── db/
+│   │   ├── schema.sql              # データベーススキーマ
+│   │   └── database.js             # データベース操作
+│   ├── services/
+│   │   ├── googleSheets.js         # Google Sheets連携
+│   │   ├── discord.js              # Discord Bot連携
+│   │   └── benefitService.js       # 特典送信ロジック
+│   └── utils/
+│       └── dateUtils.js            # 日付計算ユーティリティ
+├── views/
+│   └── index.ejs                   # 管理画面UI
+├── public/                         # 静的ファイル（CSS/JS）
+├── .env.example                    # 環境変数テンプレート
+├── .gitignore                      # Git除外設定
+├── package.json                    # 依存パッケージ
+└── README.md                       # このファイル
+```
+
+## 🚀 セットアップ手順
+
+### 1. 環境変数設定
+
+`.env.example` を `.env` にコピーして、以下の情報を設定してください。
+
+```bash
+cp .env.example .env
+```
+
+#### 必要な環境変数
+
+```env
+# サーバーポート
+PORT=3000
+
+# Node環境
+NODE_ENV=production
+
+# PostgreSQLデータベース接続URL（Render PostgreSQLから取得）
+DATABASE_URL=postgresql://username:password@hostname:5432/database_name
+
+# Discord Bot Token（Discord Developer Portalから取得）
+DISCORD_BOT_TOKEN=your_discord_bot_token_here
+
+# Google Service Account JSON（改行を\nに置き換えたJSON文字列）
+GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"..."}
+```
+
+### 2. Discord Bot設定
+
+1. [Discord Developer Portal](https://discord.com/developers/applications) でBotを作成
+2. Bot Tokenを取得して `.env` の `DISCORD_BOT_TOKEN` に設定
+3. Botに以下の権限を付与:
+   - `Send Messages`
+   - `Attach Files`
+   - `Read Message History`
+4. BotをサーバーにInvite
+
+### 3. Google Service Account設定
+
+1. [Google Cloud Console](https://console.cloud.google.com/) でプロジェクト作成
+2. Google Sheets APIを有効化
+3. サービスアカウントを作成してJSONキーをダウンロード
+4. JSONの内容を改行を `\n` に置き換えて `.env` に設定
+5. スプレッドシートにサービスアカウントのメールアドレスを共有
+
+### 4. Render PostgreSQLデータベース設定
+
+1. Renderダッシュボードで PostgreSQL を作成
+2. Internal Database URL をコピー
+3. `.env` の `DATABASE_URL` に設定
+
+### 5. 依存パッケージインストール
+
+```bash
+npm install
+```
+
+### 6. ローカル起動
+
+```bash
+npm start
+```
+
+ブラウザで `http://localhost:3000` にアクセスして管理画面を確認
+
+## 📊 データソース
+
+### 生徒情報スプレッドシート
+**ID**: `1iqrAhNjW8jTvobkur5N_9r9uUWFHCKqrhxM72X5z-iM`
+
+- **❶RAW_生徒様情報シート**
+  - A列: 生徒名
+  - B列: 学籍番号
+  - C列: プラン種別（スタンダードプラン / プレミアムプラン）
+  - M列: DiscordチャンネルURL
+  - U列: レッスン開始日
+
+- **❸契約後チェックシート**
+  - B列: 入会日（4行目以降）
+
+### 特典メッセージスプレッドシート
+**ID**: `1--uAzzz3QD8EOtCFYkMSYVnuK8KDRbPeJ38Y71ItE8Q`
+
+各シートの指定セルからメッセージを取得
+
+## 🗄️ データベース構造
+
+### benefit_history テーブル
+生徒様の最新送信状態（1生徒1レコード）
+
+| カラム | 型 | 説明 |
+|--------|------|------|
+| id | SERIAL | 主キー |
+| student_name | VARCHAR(255) | 生徒名 |
+| student_id | VARCHAR(50) | 学籍番号（UNIQUE） |
+| plan_type | VARCHAR(50) | プラン種別 |
+| last_benefit_rank | VARCHAR(50) | 最後に送信した特典ランク |
+| last_sent_at | TIMESTAMP | 最後の送信日時 |
+| enrollment_date | DATE | 入会日 |
+| lesson_start_date | DATE | レッスン開始日 |
+| discord_channel_url | TEXT | DiscordチャンネルURL |
+
+### send_logs テーブル
+送信の詳細ログ（全送信履歴）
+
+| カラム | 型 | 説明 |
+|--------|------|------|
+| id | SERIAL | 主キー |
+| student_id | VARCHAR(50) | 学籍番号 |
+| student_name | VARCHAR(255) | 生徒名 |
+| benefit_rank | VARCHAR(50) | 送信した特典ランク |
+| plan_type | VARCHAR(50) | プラン種別 |
+| message_content | TEXT | 送信したメッセージ内容 |
+| discord_channel_url | TEXT | 送信先URL |
+| sent_at | TIMESTAMP | 送信日時 |
+| status | VARCHAR(20) | 送信状態（success/failed） |
+| error_message | TEXT | エラーメッセージ |
+
+## 🎯 Renderデプロイ方法
+
+### 1. GitHubにプッシュ
+
+```bash
+git add .
+git commit -m "Initial commit: WannaV Benefit System"
+git remote add origin https://github.com/YOUR_USERNAME/wannav-benefit-system.git
+git push -u origin main
+```
+
+### 2. Renderでデプロイ
+
+1. [Render Dashboard](https://dashboard.render.com/) にログイン
+2. **New PostgreSQL** でデータベース作成
+   - Database Name: `wannav_benefits_db`
+   - Internal Database URL をコピー
+
+3. **New Web Service** でWebサービス作成
+   - Connect Repository: GitHubリポジトリを選択
+   - Name: `wannav-benefit-system`
+   - Environment: `Node`
+   - Build Command: `npm install`
+   - Start Command: `npm start`
+   
+4. **Environment Variables** を設定
+   - `PORT`: `3000`
+   - `NODE_ENV`: `production`
+   - `DATABASE_URL`: PostgreSQLのInternal Database URL
+   - `DISCORD_BOT_TOKEN`: Discord BotのToken
+   - `GOOGLE_SERVICE_ACCOUNT_JSON`: Google Service AccountのJSON（改行を `\n` に置き換え）
+
+5. **Deploy** をクリック
+
+### 3. 動作確認
+
+デプロイ完了後、RenderのURLにアクセスして管理画面が表示されることを確認
+
+## 📅 定期実行スケジュール
+
+- **実行時刻**: 毎日午後5時（日本時間）
+- **処理内容**: 全生徒の特典送信状態をチェックし、該当者に自動送信
+
+## 🛠️ トラブルシューティング
+
+### データベース接続エラー
+- `DATABASE_URL` が正しく設定されているか確認
+- RenderのPostgreSQLが起動しているか確認
+
+### Discord送信エラー
+- `DISCORD_BOT_TOKEN` が正しいか確認
+- BotがDiscordサーバーに参加しているか確認
+- Botに必要な権限が付与されているか確認
+
+### Google Sheets取得エラー
+- `GOOGLE_SERVICE_ACCOUNT_JSON` が正しく設定されているか確認
+- スプレッドシートにサービスアカウントが共有されているか確認
+- Google Sheets APIが有効化されているか確認
+
+### タイムゾーンの問題
+- Renderのサーバーは UTC なので、cron設定は `Asia/Tokyo` を指定
+
+## 📝 今後の拡張予定
+
+- [ ] プラチナランク・ブラックランクのメッセージ設定
+- [ ] 画像付きメッセージ送信機能
+- [ ] メール通知機能
+- [ ] より詳細な統計レポート
+
+## 📄 ライセンス
+
+ISC License
+
+## 👥 開発者
+
+WannaV VTuber育成スクール システム開発チーム
+
+---
+
+**最終更新日**: 2025年1月27日
