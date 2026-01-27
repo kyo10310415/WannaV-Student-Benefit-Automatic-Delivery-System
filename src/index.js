@@ -29,6 +29,7 @@ app.get('/', async (req, res) => {
   try {
     const history = await getAllBenefitHistory();
     const logs = await getSendLogs(50);
+    const cronEnabled = process.env.ENABLE_CRON === 'true';
     
     res.render('index', {
       history,
@@ -36,6 +37,7 @@ app.get('/', async (req, res) => {
       lastRunTime,
       lastRunResult,
       isProcessing,
+      cronEnabled,
       formatDateTime
     });
   } catch (error) {
@@ -124,6 +126,14 @@ async function initialize() {
 
 // 定期実行スケジュール設定（毎日17時に実行、日本時間）
 function setupCronJob() {
+  // 環境変数で定期実行を制御（デフォルト: オフ）
+  const enableCron = process.env.ENABLE_CRON === 'true';
+  
+  if (!enableCron) {
+    console.log('⏸️  定期実行は無効化されています（環境変数 ENABLE_CRON=true で有効化）\n');
+    return;
+  }
+  
   // cron形式: 分 時 日 月 曜日
   // 日本時間17時 = UTC 8時（JST = UTC+9）
   const cronExpression = '0 17 * * *';  // 毎日17時（サーバーのタイムゾーン設定が必要）

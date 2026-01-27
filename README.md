@@ -23,6 +23,7 @@ WannaV VTuber育成スクールの生徒様が入会してから一定期間経�
 
 ### 3. 定期実行
 - 毎日午後5時（日本時間）に自動実行
+- **環境変数 `ENABLE_CRON=true` で有効化**（デフォルト: 無効）
 - 手動実行も可能
 
 ### 4. 管理画面
@@ -72,6 +73,10 @@ PORT=3000
 
 # Node環境
 NODE_ENV=production
+
+# 定期実行の有効化（true: 有効, false: 無効）
+# ⚠️ システム完成前は false に設定してテストを推奨
+ENABLE_CRON=false
 
 # PostgreSQLデータベース接続URL（Render PostgreSQLから取得）
 DATABASE_URL=postgresql://username:password@hostname:5432/database_name
@@ -202,6 +207,7 @@ git push -u origin main
 4. **Environment Variables** を設定
    - `PORT`: `3000`
    - `NODE_ENV`: `production`
+   - `ENABLE_CRON`: `false` (⚠️ テスト完了後に `true` に変更)
    - `DATABASE_URL`: PostgreSQLのInternal Database URL
    - `DISCORD_BOT_TOKEN`: Discord BotのToken
    - `GOOGLE_SERVICE_ACCOUNT_JSON`: Google Service AccountのJSON（改行を `\n` に置き換え）
@@ -216,6 +222,20 @@ git push -u origin main
 
 - **実行時刻**: 毎日午後5時（日本時間）
 - **処理内容**: 全生徒の特典送信状態をチェックし、該当者に自動送信
+- **有効化方法**: 環境変数 `ENABLE_CRON=true` を設定
+
+### 定期実行の有効化
+
+**デフォルトでは定期実行は無効です。** システムのテストが完了してから有効化してください。
+
+1. **Renderの環境変数設定**
+   - Dashboard → Service → Environment
+   - `ENABLE_CRON` を `true` に設定
+   - 「Save Changes」をクリック
+
+2. **有効化の確認**
+   - 管理画面のシステム状態に「✅ 定期実行: 有効」と表示される
+   - ログに「⏰ 定期実行スケジュール設定完了」と表示される
 
 ## 🛠️ トラブルシューティング
 
