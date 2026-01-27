@@ -4,8 +4,8 @@ const path = require('path');
 require('dotenv').config();
 
 const { initializeDatabase, getAllBenefitHistory, getSendLogs } = require('./db/database');
-const { initializeGoogleSheets } = require('./services/googleSheets');
-const { initializeDiscordBot } = require('./services/discord');
+const { initializeGoogleSheets, getMessageForBenefit } = require('./services/googleSheets');
+const { initializeDiscordBot, sendDiscordMessage } = require('./services/discord');
 const { processAllBenefits } = require('./services/benefitService');
 const { formatDateTime } = require('./utils/dateUtils');
 
@@ -88,6 +88,63 @@ app.get('/api/status', (req, res) => {
     lastRunTime,
     lastRunResult
   });
+});
+
+// API: テスト送信
+app.post('/api/test-send', async (req, res) => {
+  const { planType, benefitRank } = req.body;
+  
+  // 固定のテスト送信先
+  const testChannelUrl = 'https://discord.com/channels/1176426605309083678/1293539258069417994';
+  
+  if (!planType || !benefitRank) {
+    return res.status(400).json({
+      success: false,
+      message: 'プランタイプと特典ランクを指定してください'
+    });
+  }
+  
+  try {
+    console.log(`🧪 テスト送信: ${planType} - ${benefitRank}`);
+    
+    // メッセージを取得
+    const message = await getMessageForBenefit(planType, benefitRank);
+    
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        message: 'メッセージが見つかりませんでした'
+      });
+    }
+    
+    // Discordに送信
+    const result = await sendDiscordMessage(testChannelUrl, message);
+    
+    if (result.success) {
+      console.log(`✅ テスト送信成功: ${planType} - ${benefitRank}`);
+      res.json({
+        success: true,
+        message: 'テスト送信が完了しました',
+        planType,
+        benefitRank,
+        channelUrl: testChannelUrl
+      });
+    } else {
+      console.error(`❌ テスト送信失敗: ${result.error}`);
+      res.status(500).json({
+        success: false,
+        message: 'Discord送信に失敗しました',
+        error: result.error
+      });
+    }
+  } catch (error) {
+    console.error('テスト送信エラー:', error);
+    res.status(500).json({
+      success: false,
+      message: 'テスト送信でエラーが発生しました',
+      error: error.message
+    });
+  }
 });
 
 // ヘルスチェック

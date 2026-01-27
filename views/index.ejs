@@ -96,6 +96,66 @@
       cursor: not-allowed;
     }
     
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s;
+      margin-left: 10px;
+    }
+    
+    .btn-secondary:hover {
+      background: #5a6268;
+    }
+    
+    .test-form {
+      margin-top: 20px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border: 2px dashed #dee2e6;
+    }
+    
+    .test-form h3 {
+      margin-bottom: 15px;
+      color: #495057;
+      font-size: 16px;
+    }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+      color: #495057;
+      font-size: 14px;
+    }
+    
+    .form-group select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      font-size: 14px;
+      background: white;
+    }
+    
+    .test-info {
+      margin-top: 10px;
+      padding: 10px;
+      background: #e7f3ff;
+      border-left: 4px solid #0066cc;
+      font-size: 12px;
+      color: #004085;
+    }
+    
     .section {
       background: white;
       padding: 25px;
@@ -211,7 +271,42 @@
         <p class="processing">🔄 バッチ処理実行中...</p>
       <% } else { %>
         <button class="btn" onclick="runBatch()">▶️ 手動実行</button>
+        <button class="btn-secondary" onclick="toggleTestForm()">🧪 テスト送信</button>
       <% } %>
+      
+      <!-- テスト送信フォーム -->
+      <div class="test-form" id="testForm" style="display: none;">
+        <h3>🧪 テスト送信</h3>
+        <div class="test-info">
+          📍 送信先: https://discord.com/channels/1176426605309083678/1293539258069417994（固定）
+        </div>
+        
+        <div class="form-group">
+          <label for="planType">プランタイプ</label>
+          <select id="planType">
+            <option value="">選択してください</option>
+            <option value="スタンダードプラン">スタンダードプラン</option>
+            <option value="プレミアムプラン">プレミアムプラン</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="benefitRank">特典ランク</label>
+          <select id="benefitRank">
+            <option value="">選択してください</option>
+            <option value="10日達成">10日達成</option>
+            <option value="ビギナーⅠ">ビギナーⅠ</option>
+            <option value="ビギナーⅡ">ビギナーⅡ</option>
+            <option value="ビギナーⅢ">ビギナーⅢ</option>
+            <option value="ブロンズ">ブロンズ</option>
+            <option value="シルバー">シルバー</option>
+            <option value="ゴールド">ゴールド</option>
+          </select>
+        </div>
+        
+        <button class="btn" onclick="sendTest()">📤 テスト送信</button>
+        <button class="btn-secondary" onclick="toggleTestForm()">キャンセル</button>
+      </div>
       
       <div class="status-grid">
         <div class="status-item">
@@ -324,6 +419,53 @@
   </div>
   
   <script>
+    function toggleTestForm() {
+      const form = document.getElementById('testForm');
+      form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    }
+    
+    async function sendTest() {
+      const planType = document.getElementById('planType').value;
+      const benefitRank = document.getElementById('benefitRank').value;
+      
+      if (!planType || !benefitRank) {
+        alert('プランタイプと特典ランクを選択してください');
+        return;
+      }
+      
+      if (!confirm(`テスト送信しますか？\n\nプラン: ${planType}\nランク: ${benefitRank}`)) {
+        return;
+      }
+      
+      const btn = event.target;
+      btn.disabled = true;
+      btn.textContent = '⏳ 送信中...';
+      
+      try {
+        const response = await fetch('/api/test-send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ planType, benefitRank })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          alert(`✅ テスト送信が完了しました！\n\nプラン: ${result.planType}\nランク: ${result.benefitRank}\n\nDiscordを確認してください。`);
+          toggleTestForm();
+        } else {
+          alert('❌ エラー: ' + result.message);
+        }
+      } catch (error) {
+        alert('❌ 通信エラーが発生しました: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '📤 テスト送信';
+      }
+    }
+    
     async function runBatch() {
       if (!confirm('バッチ処理を手動実行しますか？')) return;
       
