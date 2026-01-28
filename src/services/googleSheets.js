@@ -53,8 +53,8 @@ async function getStudentInfo() {
   for (const row of data) {
     const planType = row[2]; // C列: プラン種別
     
-    // スタンダードプランまたはプレミアムプランのみ対象
-    if (planType === 'スタンダードプラン' || planType === 'プレミアムプラン') {
+    // スタンダードプラン、レギュラープラン、プレミアムプランが対象
+    if (planType === 'スタンダードプラン' || planType === 'レギュラープラン' || planType === 'プレミアムプラン') {
       students.push({
         studentName: row[0] || '',           // A列: 生徒名
         studentId: row[1] || '',             // B列: 学籍番号
@@ -97,6 +97,15 @@ async function getBenefitMessage(sheetName, cellAddress) {
 // ランクに応じたメッセージ取得設定
 const BENEFIT_MESSAGE_CONFIG = {
   'スタンダードプラン': {
+    '10日達成': { sheet: '10日', cell: 'A3' },
+    'ビギナーⅠ': { sheet: 'ビギナーl', cell: 'A2' },
+    'ビギナーⅡ': { sheet: 'ビギナーll', cell: 'A2' },
+    'ビギナーⅢ': { sheet: 'ビギナーlll', cell: 'A2' },
+    'ブロンズ': { sheet: 'ブロンズ', cell: 'A2' },
+    'シルバー': { sheet: 'シルバー', cell: 'A2' },
+    'ゴールド': { sheet: 'ゴールド', cell: 'A2' }
+  },
+  'レギュラープラン': {
     '10日達成': { sheet: '10日', cell: 'A3' },
     'ビギナーⅠ': { sheet: 'ビギナーl', cell: 'A2' },
     'ビギナーⅡ': { sheet: 'ビギナーll', cell: 'A2' },
