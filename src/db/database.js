@@ -126,6 +126,69 @@ async function getSendLogs(limit = 100) {
   }
 }
 
+// ランク別画像を保存または更新
+async function saveBenefitImage(benefitRank, imageBuffer, filename, mimetype) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `INSERT INTO benefit_images (benefit_rank, image_data, image_filename, image_mimetype, image_size)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (benefit_rank) 
+       DO UPDATE SET 
+         image_data = EXCLUDED.image_data,
+         image_filename = EXCLUDED.image_filename,
+         image_mimetype = EXCLUDED.image_mimetype,
+         image_size = EXCLUDED.image_size,
+         updated_at = CURRENT_TIMESTAMP
+       RETURNING id`,
+      [benefitRank, imageBuffer, filename, mimetype, imageBuffer.length]
+    );
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
+// ランク別画像を取得
+async function getBenefitImage(benefitRank) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      'SELECT * FROM benefit_images WHERE benefit_rank = $1',
+      [benefitRank]
+    );
+    return result.rows.length > 0 ? result.rows[0] : null;
+  } finally {
+    client.release();
+  }
+}
+
+// すべての画像情報を取得（管理画面用）
+async function getAllBenefitImages() {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      'SELECT benefit_rank, image_filename, image_size, uploaded_at, updated_at FROM benefit_images ORDER BY benefit_rank'
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+// 画像を削除
+async function deleteBenefitImage(benefitRank) {
+  const client = await pool.connect();
+  try {
+    await client.query(
+      'DELETE FROM benefit_images WHERE benefit_rank = $1',
+      [benefitRank]
+    );
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   pool,
   initializeDatabase,
@@ -133,5 +196,9 @@ module.exports = {
   updateBenefitHistory,
   createSendLog,
   getAllBenefitHistory,
-  getSendLogs
+  getSendLogs,
+  saveBenefitImage,
+  getBenefitImage,
+  getAllBenefitImages,
+  deleteBenefitImage
 };

@@ -61,7 +61,7 @@ function extractChannelId(channelUrl) {
 }
 
 // Discordチャンネルにメッセージを送信
-async function sendDiscordMessage(channelUrl, message, imageUrl = null) {
+async function sendDiscordMessage(channelUrl, message, imageData = null) {
   try {
     if (!discordClient || !discordClient.isReady()) {
       await initializeDiscordBot();
@@ -80,9 +80,17 @@ async function sendDiscordMessage(channelUrl, message, imageUrl = null) {
     // テキストメッセージを送信
     const messageOptions = { content: message };
     
-    // 画像URLがある場合は添付
-    if (imageUrl) {
-      messageOptions.files = [imageUrl];
+    // 画像データがある場合は添付
+    if (imageData) {
+      // BufferまたはURLに対応
+      if (Buffer.isBuffer(imageData)) {
+        const { AttachmentBuilder } = require('discord.js');
+        const attachment = new AttachmentBuilder(imageData, { name: 'benefit_image.png' });
+        messageOptions.files = [attachment];
+      } else if (typeof imageData === 'string') {
+        // URLの場合
+        messageOptions.files = [imageData];
+      }
     }
 
     const sentMessage = await channel.send(messageOptions);

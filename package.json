@@ -7,7 +7,12 @@
     "dev": "node src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["wannav", "vtuber", "benefit", "automation"],
+  "keywords": [
+    "wannav",
+    "vtuber",
+    "benefit",
+    "automation"
+  ],
   "author": "WannaV",
   "license": "ISC",
   "description": "WannaV VTuber育成スクール 生徒様特典自動送付システム",
@@ -17,6 +22,7 @@
     "ejs": "^4.0.1",
     "express": "^5.2.1",
     "googleapis": "^170.1.0",
+    "multer": "^2.0.2",
     "node-cron": "^4.2.1",
     "pg": "^8.17.2"
   }

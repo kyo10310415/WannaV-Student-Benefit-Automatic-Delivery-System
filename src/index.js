@@ -1,9 +1,10 @@
 const express = require('express');
 const cron = require('node-cron');
 const path = require('path');
+const multer = require('multer');
 require('dotenv').config();
 
-const { initializeDatabase, getAllBenefitHistory, getSendLogs } = require('./db/database');
+const { initializeDatabase, getAllBenefitHistory, getSendLogs, saveBenefitImage, getBenefitImage, getAllBenefitImages, deleteBenefitImage } = require('./db/database');
 const { initializeGoogleSheets, getMessageForBenefit } = require('./services/googleSheets');
 const { initializeDiscordBot, sendDiscordMessage } = require('./services/discord');
 const { processAllBenefits } = require('./services/benefitService');
@@ -11,6 +12,22 @@ const { formatDateTime } = require('./utils/dateUtils');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Multer設定（メモリストレージ）
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB制限
+  },
+  fileFilter: (req, file, cb) => {
+    // PNG, JPEG, GIF, WEBPのみ許可
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('画像ファイルのみアップロード可能です'));
+    }
+  }
+});
 
 // ミドルウェア設定
 app.use(express.json());
@@ -29,11 +46,13 @@ app.get('/', async (req, res) => {
   try {
     const history = await getAllBenefitHistory();
     const logs = await getSendLogs(50);
+    const images = await getAllBenefitImages();
     const cronEnabled = process.env.ENABLE_CRON === 'true';
     
     res.render('index', {
       history,
       logs,
+      images,
       lastRunTime,
       lastRunResult,
       isProcessing,
@@ -117,8 +136,16 @@ app.post('/api/test-send', async (req, res) => {
       });
     }
     
+    // ランク別画像を取得
+    let imageBuffer = null;
+    const imageData = await getBenefitImage(benefitRank);
+    if (imageData && imageData.image_data) {
+      imageBuffer = imageData.image_data;
+      console.log(`  🖼️ テスト送信: 画像を添付します (${imageData.image_filename})`);
+    }
+    
     // Discordに送信
-    const result = await sendDiscordMessage(testChannelUrl, message);
+    const result = await sendDiscordMessage(testChannelUrl, message, imageBuffer);
     
     if (result.success) {
       console.log(`✅ テスト送信成功: ${planType} - ${benefitRank}`);
@@ -142,6 +169,102 @@ app.post('/api/test-send', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'テスト送信でエラーが発生しました',
+      error: error.message
+    });
+  }
+});
+
+// API: 画像アップロード
+app.post('/api/upload-image', upload.single('image'), async (req, res) => {
+  try {
+    const { benefitRank } = req.body;
+    
+    if (!benefitRank) {
+      return res.status(400).json({
+        success: false,
+        message: '特典ランクを指定してください'
+      });
+    }
+    
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: '画像ファイルをアップロードしてください'
+      });
+    }
+    
+    console.log(`📤 画像アップロード: ${benefitRank} - ${req.file.originalname}`);
+    
+    // データベースに保存
+    await saveBenefitImage(
+      benefitRank,
+      req.file.buffer,
+      req.file.originalname,
+      req.file.mimetype
+    );
+    
+    console.log(`✅ 画像保存成功: ${benefitRank}`);
+    
+    res.json({
+      success: true,
+      message: '画像がアップロードされました',
+      benefitRank,
+      filename: req.file.originalname,
+      size: req.file.size
+    });
+  } catch (error) {
+    console.error('画像アップロードエラー:', error);
+    res.status(500).json({
+      success: false,
+      message: '画像アップロードでエラーが発生しました',
+      error: error.message
+    });
+  }
+});
+
+// API: 画像取得（プレビュー用）
+app.get('/api/image/:benefitRank', async (req, res) => {
+  try {
+    const { benefitRank } = req.params;
+    const imageData = await getBenefitImage(benefitRank);
+    
+    if (!imageData || !imageData.image_data) {
+      return res.status(404).json({
+        success: false,
+        message: '画像が見つかりません'
+      });
+    }
+    
+    res.set('Content-Type', imageData.image_mimetype);
+    res.send(imageData.image_data);
+  } catch (error) {
+    console.error('画像取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      message: '画像取得でエラーが発生しました'
+    });
+  }
+});
+
+// API: 画像削除
+app.delete('/api/image/:benefitRank', async (req, res) => {
+  try {
+    const { benefitRank } = req.params;
+    
+    await deleteBenefitImage(benefitRank);
+    
+    console.log(`🗑️ 画像削除成功: ${benefitRank}`);
+    
+    res.json({
+      success: true,
+      message: '画像が削除されました',
+      benefitRank
+    });
+  } catch (error) {
+    console.error('画像削除エラー:', error);
+    res.status(500).json({
+      success: false,
+      message: '画像削除でエラーが発生しました',
       error: error.message
     });
   }

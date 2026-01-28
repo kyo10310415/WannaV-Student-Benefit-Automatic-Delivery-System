@@ -1,6 +1,6 @@
 const { getStudentInfo, getEnrollmentDates, getMessageForBenefit } = require('./googleSheets');
 const { sendDiscordMessage } = require('./discord');
-const { getOrCreateStudentHistory, updateBenefitHistory, createSendLog } = require('../db/database');
+const { getOrCreateStudentHistory, updateBenefitHistory, createSendLog, getBenefitImage } = require('../db/database');
 const { parseDate, getDaysDifference, getMonthsDifference, getJapanTime } = require('../utils/dateUtils');
 
 // ランク定義（日数・月数ベース）
@@ -115,10 +115,19 @@ async function processBenefitForStudent(student, enrollmentDate) {
       return { success: false, error: 'メッセージ取得失敗' };
     }
     
+    // ランク別画像を取得
+    let imageBuffer = null;
+    const imageData = await getBenefitImage(currentRank);
+    if (imageData && imageData.image_data) {
+      imageBuffer = imageData.image_data;
+      console.log(`  🖼️ ${student.studentName}: 画像を添付します (${imageData.image_filename})`);
+    }
+    
     // Discordに送信
     const discordResult = await sendDiscordMessage(
       student.discordChannelUrl,
-      message
+      message,
+      imageBuffer
     );
     
     if (!discordResult.success) {
