@@ -149,10 +149,10 @@ async function getPaymentStatus() {
     // データ行（14行目以降）を取得
     const paymentData = await getSheetData(STUDENT_INFO_SPREADSHEET_ID, 'RAW_支払い状況!A14:ZZ');
     
-    // 現在の年月を取得
+    // 現在の年月を取得（前月）
     const now = new Date();
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const targetYearMonth = `${lastMonth.getFullYear()}/${String(lastMonth.getMonth() + 1).padStart(2, '0')}`;
+    const targetYearMonth = `${lastMonth.getFullYear()}/${lastMonth.getMonth() + 1}`; // 0埋めなし
     
     console.log(`💰 支払い状況チェック: 前月 ${targetYearMonth}`);
     
