@@ -1,6 +1,6 @@
 const { getStudentInfo, getEnrollmentDates, getMessageForBenefit, getPaymentStatus } = require('./googleSheets');
 const { sendDiscordMessage } = require('./discord');
-const { getOrCreateStudentHistory, updateBenefitHistory, createSendLog, getBenefitImage } = require('../db/database');
+const { getOrCreateStudentHistory, updateBenefitHistory, setPendingBenefit, createSendLog, getBenefitImage } = require('../db/database');
 const { parseDate, getDaysDifference, getMonthsDifference, getJapanTime } = require('../utils/dateUtils');
 
 // ランク定義（日数・月数ベース）
@@ -18,6 +18,7 @@ const RANK_DEFINITIONS = [
 
 /**
  * 生徒が現在達成すべきランクを判定
+ * 支払い完了後すぐに送信: 過去の該当月を過ぎている場合は月初でなくても送信
  */
 function determineCurrentRank(enrollmentDate, lessonStartDate, lastSentRank) {
   const now = getJapanTime();
@@ -52,12 +53,18 @@ function determineCurrentRank(enrollmentDate, lessonStartDate, lastSentRank) {
       
       // 該当月数に達しているか
       if (monthsSinceLessonStart >= rankDef.value) {
-        // 月初に送信（月初でない場合は次回に持ち越し）
-        const isFirstDay = now.getDate() === 1;
-        
-        // まだ送信していないランクで、月初の場合に返す
-        if (isFirstDay) {
+        // 該当月を過ぎている場合は月初でなくてもすぐに送信
+        // 例: 2026/2/1にビギナーⅡが送信予定だったが支払い未完了でスキップ
+        //     → 2026/2/5に支払い完了したら即座に送信
+        if (monthsSinceLessonStart > rankDef.value) {
+          // 該当月を過ぎている = 既に送信タイミングを過ぎている
           return rankDef.rank;
+        } else {
+          // 該当月ちょうど = 月初のみ送信
+          const isFirstDay = now.getDate() === 1;
+          if (isFirstDay) {
+            return rankDef.rank;
+          }
         }
       }
     }

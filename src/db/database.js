@@ -66,7 +66,24 @@ async function updateBenefitHistory(studentId, benefitRank) {
   try {
     await client.query(
       `UPDATE benefit_history 
-       SET last_benefit_rank = $1, last_sent_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP 
+       SET last_benefit_rank = $1, last_sent_at = CURRENT_TIMESTAMP, 
+           pending_benefit_rank = NULL, pending_since = NULL, 
+           updated_at = CURRENT_TIMESTAMP 
+       WHERE student_id = $2`,
+      [benefitRank, studentId]
+    );
+  } finally {
+    client.release();
+  }
+}
+
+// 保留中の特典を設定
+async function setPendingBenefit(studentId, benefitRank) {
+  const client = await pool.connect();
+  try {
+    await client.query(
+      `UPDATE benefit_history 
+       SET pending_benefit_rank = $1, pending_since = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP 
        WHERE student_id = $2`,
       [benefitRank, studentId]
     );
@@ -194,6 +211,7 @@ module.exports = {
   initializeDatabase,
   getOrCreateStudentHistory,
   updateBenefitHistory,
+  setPendingBenefit,
   createSendLog,
   getAllBenefitHistory,
   getSendLogs,

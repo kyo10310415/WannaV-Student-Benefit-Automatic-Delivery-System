@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS benefit_history (
   plan_type VARCHAR(50) NOT NULL,
   last_benefit_rank VARCHAR(50),
   last_sent_at TIMESTAMP,
+  pending_benefit_rank VARCHAR(50),
+  pending_since TIMESTAMP,
   enrollment_date DATE,
   lesson_start_date DATE,
   discord_channel_url TEXT,
@@ -52,5 +54,7 @@ COMMENT ON TABLE benefit_images IS 'ランク別の特典画像を管理する�
 COMMENT ON COLUMN benefit_history.student_id IS '学籍番号';
 COMMENT ON COLUMN benefit_history.plan_type IS 'スタンダードプラン or レギュラープラン or プレミアムプラン';
 COMMENT ON COLUMN benefit_history.last_benefit_rank IS '最後に送信した特典ランク（10日達成、ビギナーⅠ等）';
+COMMENT ON COLUMN benefit_history.pending_benefit_rank IS '支払い未完了でスキップした特典ランク';
+COMMENT ON COLUMN benefit_history.pending_since IS 'スキップした日時';
 COMMENT ON COLUMN benefit_images.benefit_rank IS '特典ランク（10日達成、ビギナーⅠ等）';
 COMMENT ON COLUMN benefit_images.image_data IS '画像データ（BYTEA形式）';
