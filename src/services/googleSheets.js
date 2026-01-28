@@ -59,6 +59,7 @@ async function getStudentInfo() {
         studentName: row[0] || '',           // A列: 生徒名
         studentId: row[1] || '',             // B列: 学籍番号
         planType: planType,                  // C列: プラン種別
+        discordUserId: row[6] || '',         // G列: DiscordユーザーID
         discordChannelUrl: row[12] || '',    // M列: Discordチャンネル URL
         lessonStartDate: row[20] || ''       // U列: レッスン開始日
       });
@@ -138,11 +139,63 @@ async function getMessageForBenefit(planType, benefitRank) {
   return await getBenefitMessage(sheet, cell);
 }
 
+// 支払い状況を取得（RAW_支払い状況シート）
+async function getPaymentStatus() {
+  try {
+    // ヘッダー行（13行目）を取得
+    const headerData = await getSheetData(STUDENT_INFO_SPREADSHEET_ID, 'RAW_支払い状況!A13:ZZ13');
+    const headers = headerData[0] || [];
+    
+    // データ行（14行目以降）を取得
+    const paymentData = await getSheetData(STUDENT_INFO_SPREADSHEET_ID, 'RAW_支払い状況!A14:ZZ');
+    
+    // 現在の年月を取得
+    const now = new Date();
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const targetYearMonth = `${lastMonth.getFullYear()}/${String(lastMonth.getMonth() + 1).padStart(2, '0')}`;
+    
+    console.log(`💰 支払い状況チェック: 前月 ${targetYearMonth}`);
+    
+    // 前月の列インデックスを検索
+    let targetColumnIndex = -1;
+    for (let i = 0; i < headers.length; i++) {
+      if (headers[i] && headers[i].includes(targetYearMonth)) {
+        targetColumnIndex = i;
+        break;
+      }
+    }
+    
+    if (targetColumnIndex === -1) {
+      console.warn(`⚠️ 前月（${targetYearMonth}）の支払い状況列が見つかりません`);
+      return {};
+    }
+    
+    console.log(`✅ 前月の支払い状況列を検出: ${headers[targetColumnIndex]} (列インデックス: ${targetColumnIndex})`);
+    
+    // 学籍番号と支払い状況のマップを作成
+    const paymentStatusMap = {};
+    for (const row of paymentData) {
+      const studentId = row[2]; // C列: 学籍番号
+      const paymentStatus = row[targetColumnIndex] || '';
+      
+      if (studentId) {
+        paymentStatusMap[studentId] = paymentStatus;
+      }
+    }
+    
+    return paymentStatusMap;
+  } catch (error) {
+    console.error('❌ 支払い状況取得エラー:', error);
+    return {};
+  }
+}
+
 module.exports = {
   initializeGoogleSheets,
   getStudentInfo,
   getEnrollmentDates,
   getMessageForBenefit,
+  getPaymentStatus,
   STUDENT_INFO_SPREADSHEET_ID,
   BENEFIT_MESSAGE_SPREADSHEET_ID
 };

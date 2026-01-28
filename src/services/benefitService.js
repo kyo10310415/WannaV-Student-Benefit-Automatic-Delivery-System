@@ -1,4 +1,4 @@
-const { getStudentInfo, getEnrollmentDates, getMessageForBenefit } = require('./googleSheets');
+const { getStudentInfo, getEnrollmentDates, getMessageForBenefit, getPaymentStatus } = require('./googleSheets');
 const { sendDiscordMessage } = require('./discord');
 const { getOrCreateStudentHistory, updateBenefitHistory, createSendLog, getBenefitImage } = require('../db/database');
 const { parseDate, getDaysDifference, getMonthsDifference, getJapanTime } = require('../utils/dateUtils');
@@ -69,9 +69,17 @@ function determineCurrentRank(enrollmentDate, lessonStartDate, lastSentRank) {
 /**
  * 単一生徒の特典送信処理
  */
-async function processBenefitForStudent(student, enrollmentDate) {
+async function processBenefitForStudent(student, enrollmentDate, paymentStatusMap) {
   try {
     console.log(`\n📝 処理開始: ${student.studentName} (${student.studentId})`);
+    
+    // 支払い状況をチェック
+    const paymentStatus = paymentStatusMap[student.studentId];
+    if (paymentStatus !== '支払い完了') {
+      console.log(`  💳 ${student.studentName}: 前月の支払い未完了 (${paymentStatus || '未記入'}) - スキップ`);
+      return { success: true, skipped: true, reason: 'payment_pending' };
+    }
+    console.log(`  ✅ ${student.studentName}: 前月の支払い完了確認`);
     
     // データベースから履歴を取得または作成
     const history = await getOrCreateStudentHistory({
@@ -98,7 +106,7 @@ async function processBenefitForStudent(student, enrollmentDate) {
     console.log(`  🎯 ${student.studentName}: ${currentRank} の特典を送信します`);
     
     // メッセージを取得
-    const message = await getMessageForBenefit(student.planType, currentRank);
+    let message = await getMessageForBenefit(student.planType, currentRank);
     
     if (!message) {
       console.error(`  ❌ ${student.studentName}: メッセージが取得できませんでした`);
@@ -113,6 +121,12 @@ async function processBenefitForStudent(student, enrollmentDate) {
         errorMessage: 'メッセージ取得失敗'
       });
       return { success: false, error: 'メッセージ取得失敗' };
+    }
+    
+    // DiscordユーザーIDがある場合はメンションを追加
+    if (student.discordUserId) {
+      message = `<@${student.discordUserId}>\n${message}`;
+      console.log(`  💬 ${student.studentName}: メンションを追加 (<@${student.discordUserId}>)`);
     }
     
     // ランク別画像を取得
@@ -188,6 +202,7 @@ async function processAllBenefits() {
     console.log('\n📊 Google Sheetsからデータ取得中...');
     const students = await getStudentInfo();
     const enrollmentDates = await getEnrollmentDates();
+    const paymentStatusMap = await getPaymentStatus();
     
     console.log(`✅ 取得完了: 対象生徒 ${students.length}名`);
     
@@ -198,7 +213,7 @@ async function processAllBenefits() {
       const student = students[i];
       const enrollmentDate = enrollmentDates[i] || null;
       
-      const result = await processBenefitForStudent(student, enrollmentDate);
+      const result = await processBenefitForStudent(student, enrollmentDate, paymentStatusMap);
       
       if (result.success) {
         if (result.skipped) {
