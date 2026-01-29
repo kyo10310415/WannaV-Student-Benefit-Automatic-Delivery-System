@@ -18,11 +18,13 @@
   "license": "ISC",
   "description": "WannaV VTuber育成スクール 生徒様特典自動送付システム",
   "dependencies": {
+    "cookie-parser": "^1.4.7",
     "discord.js": "^14.25.1",
     "dotenv": "^17.2.3",
     "ejs": "^4.0.1",
     "express": "^5.2.1",
     "googleapis": "^170.1.0",
+    "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
     "pg": "^8.17.2"

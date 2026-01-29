@@ -2,6 +2,7 @@ const express = require('express');
 const cron = require('node-cron');
 const path = require('path');
 const multer = require('multer');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 const { initializeDatabase, getAllBenefitHistory, getSendLogs, saveBenefitImage, getBenefitImage, getAllBenefitImages, deleteBenefitImage } = require('./db/database');
@@ -9,6 +10,7 @@ const { initializeGoogleSheets, getMessageForBenefit } = require('./services/goo
 const { initializeDiscordBot, sendDiscordMessage } = require('./services/discord');
 const { processAllBenefits } = require('./services/benefitService');
 const { formatDateTime } = require('./utils/dateUtils');
+const ssoAuth = require('../middleware/sso-auth-middleware');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,9 +34,20 @@ const upload = multer({
 // ミドルウェア設定
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 app.use(express.static('public'));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '../views'));
+
+// SSO認証ミドルウェア（APIルートは除外）
+app.use((req, res, next) => {
+  // APIルートはSSO認証をスキップ
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
+  // その他のルートはSSO認証を適用
+  return ssoAuth(req, res, next);
+});
 
 // バッチ処理の実行状態
 let isProcessing = false;
