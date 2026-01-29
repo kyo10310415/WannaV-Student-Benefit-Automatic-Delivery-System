@@ -52,13 +52,17 @@ async function getStudentInfo() {
   const students = [];
   for (const row of data) {
     const planType = row[2]; // C列: プラン種別
+    const memberStatus = row[3]; // D列: 会員ステータス
     
     // スタンダードプラン、レギュラープラン、プレミアムプランが対象
-    if (planType === 'スタンダードプラン' || planType === 'レギュラープラン' || planType === 'プレミアムプラン') {
+    // かつ会員ステータスが「アクティブ」の場合のみ
+    if ((planType === 'スタンダードプラン' || planType === 'レギュラープラン' || planType === 'プレミアムプラン') 
+        && memberStatus === 'アクティブ') {
       students.push({
         studentName: row[0] || '',           // A列: 生徒名
         studentId: row[1] || '',             // B列: 学籍番号
         planType: planType,                  // C列: プラン種別
+        memberStatus: memberStatus,          // D列: 会員ステータス
         discordUserId: row[6] || '',         // G列: DiscordユーザーID
         discordChannelUrl: row[12] || '',    // M列: Discordチャンネル URL
         lessonStartDate: row[20] || ''       // U列: レッスン開始日

@@ -80,14 +80,6 @@ async function processBenefitForStudent(student, enrollmentDate, paymentStatusMa
   try {
     console.log(`\n📝 処理開始: ${student.studentName} (${student.studentId})`);
     
-    // 支払い状況をチェック
-    const paymentStatus = paymentStatusMap[student.studentId];
-    if (paymentStatus !== '支払い完了') {
-      console.log(`  💳 ${student.studentName}: 前月の支払い未完了 (${paymentStatus || '未記入'}) - スキップ`);
-      return { success: true, skipped: true, reason: 'payment_pending' };
-    }
-    console.log(`  ✅ ${student.studentName}: 前月の支払い完了確認`);
-    
     // データベースから履歴を取得または作成
     const history = await getOrCreateStudentHistory({
       studentName: student.studentName,
@@ -108,6 +100,18 @@ async function processBenefitForStudent(student, enrollmentDate, paymentStatusMa
     if (!currentRank) {
       console.log(`  ℹ️ ${student.studentName}: 現時点で送信すべき特典なし`);
       return { success: true, skipped: true };
+    }
+    
+    // 10日達成以外は支払い状況をチェック
+    if (currentRank !== '10日達成') {
+      const paymentStatus = paymentStatusMap[student.studentId];
+      if (paymentStatus !== '支払い完了') {
+        console.log(`  💳 ${student.studentName}: 前月の支払い未完了 (${paymentStatus || '未記入'}) - スキップ`);
+        return { success: true, skipped: true, reason: 'payment_pending' };
+      }
+      console.log(`  ✅ ${student.studentName}: 前月の支払い完了確認`);
+    } else {
+      console.log(`  ✨ ${student.studentName}: 10日達成 - 支払い状況チェックをスキップ`);
     }
     
     console.log(`  🎯 ${student.studentName}: ${currentRank} の特典を送信します`);
