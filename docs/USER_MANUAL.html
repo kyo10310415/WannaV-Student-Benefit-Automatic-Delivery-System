@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WannaV 生徒様特典自動送付システム ユーザーマニュアル</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: "游ゴシック体", "Yu Gothic", YuGothic, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            font-size: 11pt;
+            background: white;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            font-size: 24pt;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #3498db;
+            page-break-before: always;
+        }
+        
+        h1:first-of-type {
+            page-break-before: avoid;
+        }
+        
+        h2 {
+            color: #34495e;
+            font-size: 18pt;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            padding-left: 10px;
+            border-left: 5px solid #3498db;
+            page-break-after: avoid;
+        }
+        
+        h3 {
+            color: #555;
+            font-size: 14pt;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            page-break-after: avoid;
+        }
+        
+        h4 {
+            color: #666;
+            font-size: 12pt;
+            margin-top: 15px;
+            margin-bottom: 8px;
+        }
+        
+        p {
+            margin-bottom: 10px;
+            text-align: justify;
+        }
+        
+        ul, ol {
+            margin-left: 25px;
+            margin-bottom: 15px;
+        }
+        
+        li {
+            margin-bottom: 5px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 10pt;
+            page-break-inside: avoid;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #3498db;
+            color: white;
+            font-weight: bold;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        .info-box {
+            background-color: #e8f4fd;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 15px 0;
+            page-break-inside: avoid;
+        }
+        
+        .warning-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            page-break-inside: avoid;
+        }
+        
+        .success-box {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 15px 0;
+            page-break-inside: avoid;
+        }
+        
+        .error-box {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 15px 0;
+            page-break-inside: avoid;
+        }
+        
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: "Courier New", monospace;
+            font-size: 10pt;
+        }
+        
+        pre {
+            background-color: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+            page-break-inside: avoid;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 9pt;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        
+        .badge-success {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .badge-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .badge-info {
+            background-color: #17a2b8;
+            color: white;
+        }
+        
+        .badge-warning {
+            background-color: #ffc107;
+            color: #000;
+        }
+        
+        .page-break {
+            page-break-after: always;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #3498db;
+        }
+        
+        .header h1 {
+            border: none;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .header .subtitle {
+            color: #666;
+            font-size: 11pt;
+            margin-top: 10px;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            color: #999;
+            font-size: 10pt;
+        }
+        
+        .toc {
+            background-color: #f9f9f9;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        .toc h2 {
+            margin-top: 0;
+        }
+        
+        .toc ul {
+            list-style: none;
+            margin-left: 0;
+        }
+        
+        .toc li {
+            margin-bottom: 8px;
+        }
+        
+        .toc a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        
+        .toc a:hover {
+            text-decoration: underline;
+        }
+        
+        @media print {
+            body {
+                background: white;
+            }
+            
+            a {
+                color: #000;
+                text-decoration: none;
+            }
+            
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>WannaV 生徒様特典自動送付システム<br>ユーザーマニュアル</h1>
+            <div class="subtitle">
+                <strong>バージョン</strong>: 1.0<br>
+                <strong>最終更新日</strong>: 2026年1月29日
+            </div>
+        </div>
+
+        <div class="toc">
+            <h2>📋 目次</h2>
+            <ul>
+                <li>1. <a href="#overview">システム概要</a></li>
+                <li>2. <a href="#timing">特典送信のタイミング</a></li>
+                <li>3. <a href="#conditions">送信条件の詳細</a></li>
+                <li>4. <a href="#plans">プラン別特典内容</a></li>
+                <li>5. <a href="#admin">管理画面の使い方</a></li>
+                <li>6. <a href="#spreadsheet">スプレッドシート設定</a></li>
+                <li>7. <a href="#faq">よくある質問</a></li>
+            </ul>
+        </div>
+
+        <div class="page-break"></div>
+
+        <h2 id="overview">システム概要</h2>
+        
+        <p>WannaV VTuber育成スクールの生徒様が入会してから一定期間経過するごとに自動的にランクアップし、ランクに応じた特典メッセージを<strong>Discord</strong>に自動送信するシステムです。</p>
+
+        <h3>主な特徴</h3>
+        
+        <div class="info-box">
+            <ul>
+                <li><span class="badge badge-success">✅</span> <strong>完全自動送信</strong>: 毎日午後5時（日本時間）に自動実行</li>
+                <li><span class="badge badge-success">✅</span> <strong>ランク別メッセージ</strong>: 達成度に応じた特典メッセージ</li>
+                <li><span class="badge badge-success">✅</span> <strong>プラン別対応</strong>: スタンダード・レギュラー・プレミアムプラン</li>
+                <li><span class="badge badge-success">✅</span> <strong>支払い状況連動</strong>: 月次特典は支払い完了後に自動送信</li>
+                <li><span class="badge badge-success">✅</span> <strong>画像付きメッセージ</strong>: ランクごとに異なる画像を添付</li>
+            </ul>
+        </div>
+
+        <div class="page-break"></div>
+
+        <h2 id="timing">特典送信のタイミング</h2>
+
+        <h3>ランクと送信タイミング一覧</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ランク</th>
+                    <th>送信タイミング</th>
+                    <th>基準日</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>10日達成</strong></td>
+                    <td>入会日から<strong>10日経過</strong>時点</td>
+                    <td>入会日</td>
+                </tr>
+                <tr>
+                    <td><strong>ビギナーⅠ</strong></td>
+                    <td>レッスン開始月の<strong>月初（1日）</strong></td>
+                    <td>レッスン開始日</td>
+                </tr>
+                <tr>
+                    <td><strong>ビギナーⅡ</strong></td>
+                    <td>レッスン<strong>2ヶ月目</strong>の月初（1日）</td>
+                    <td>レッスン開始日</td>
+                </tr>
+                <tr>
+                    <td><strong>ビギナーⅢ</strong></td>
+                    <td>レッスン<strong>3ヶ月目</strong>の月初（1日）</td>
+                    <td>レッスン開始日</td>
+                </tr>
+                <tr>
+                    <td><strong>ブロンズ</strong></td>
+                    <td>レッスン<strong>4ヶ月目</strong>の月初（1日）</td>
+                    <td>レッスン開始日</td>
+                </tr>
+                <tr>
+                    <td><strong>シルバー</strong></td>
+                    <td>レッスン<strong>7ヶ月目</strong>の月初（1日）</td>
+                    <td>レッスン開始日</td>
+                </tr>
+                <tr>
+                    <td><strong>ゴールド</strong></td>
+                    <td>レッスン<strong>13ヶ月目</strong>の月初（1日）</td>
+                    <td>レッスン開始日</td>
+                </tr>
+                <tr>
+                    <td><strong>プラチナ</strong></td>
+                    <td>レッスン<strong>19ヶ月目</strong>の月初（1日）</td>
+                    <td>レッスン開始日</td>
+                </tr>
+                <tr>
+                    <td><strong>ブラック</strong></td>
+                    <td>レッスン<strong>25ヶ月目</strong>の月初（1日）</td>
+                    <td>レッスン開始日</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>送信タイミングの例</h3>
+
+        <h4>例1: 10日達成</h4>
+        <div class="info-box">
+            <p>入会日: 2026年1月15日</p>
+            <p>↓</p>
+            <p>10日経過: 2026年1月25日</p>
+            <p>↓</p>
+            <p><strong>送信: 2026年1月25日 午後5時</strong>（次回バッチ処理時）</p>
+        </div>
+
+        <h4>例2: ビギナーⅠ</h4>
+        <div class="info-box">
+            <p>レッスン開始日: 2026年1月20日</p>
+            <p>↓</p>
+            <p>レッスン開始月: 2026年1月</p>
+            <p>↓</p>
+            <p><strong>送信: 2026年2月1日 午後5時</strong>（翌月の月初）</p>
+        </div>
+
+        <h4>例3: ビギナーⅡ</h4>
+        <div class="info-box">
+            <p>レッスン開始日: 2026年1月20日</p>
+            <p>↓</p>
+            <p>レッスン2ヶ月目: 2026年2月</p>
+            <p>↓</p>
+            <p><strong>送信: 2026年3月1日 午後5時</strong>（2ヶ月目の月初）</p>
+        </div>
+
+        <div class="warning-box">
+            <strong>⚠️ 注意</strong><br>
+            月初（1日）の午後5時に自動送信されます。
+        </div>
+
+        <div class="page-break"></div>
+
+        <h2 id="conditions">送信条件の詳細</h2>
+
+        <p>特典が送信されるためには、以下の<strong>すべての条件</strong>を満たす必要があります。</p>
+
+        <h3>📌 基本条件（全ランク共通）</h3>
+
+        <h4>1. プラン種別</h4>
+        
+        <div class="success-box">
+            <strong>対象プラン（いずれか）:</strong>
+            <ul>
+                <li><span class="badge badge-success">✅</span> スタンダードプラン</li>
+                <li><span class="badge badge-success">✅</span> レギュラープラン</li>
+                <li><span class="badge badge-success">✅</span> プレミアムプラン</li>
+            </ul>
+        </div>
+
+        <div class="error-box">
+            <strong>対象外プラン:</strong>
+            <ul>
+                <li><span class="badge badge-danger">❌</span> 上記以外のプラン</li>
+            </ul>
+        </div>
+
+        <h4>2. 会員ステータス</h4>
+
+        <div class="success-box">
+            <strong>送信対象:</strong>
+            <ul>
+                <li><span class="badge badge-success">✅</span> 「アクティブ」のみ</li>
+            </ul>
+        </div>
+
+        <div class="error-box">
+            <strong>送信対象外:</strong>
+            <ul>
+                <li><span class="badge badge-danger">❌</span> 「休会中」</li>
+                <li><span class="badge badge-danger">❌</span> 「退会」</li>
+                <li><span class="badge badge-danger">❌</span> その他すべてのステータス</li>
+            </ul>
+        </div>
+
+        <h4>3. タイミング条件</h4>
+        <p>各ランクで定められた日数・月数に到達している必要があります。</p>
+
+        <div class="page-break"></div>
+
+        <h3>📌 ランク別の追加条件</h3>
+
+        <h4>10日達成の送信条件</h4>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>条件項目</th>
+                    <th>詳細</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>プラン種別</td>
+                    <td><span class="badge badge-success">✅</span> スタンダード/レギュラー/プレミアム</td>
+                </tr>
+                <tr>
+                    <td>会員ステータス</td>
+                    <td><span class="badge badge-success">✅</span> アクティブ</td>
+                </tr>
+                <tr>
+                    <td>経過日数</td>
+                    <td><span class="badge badge-success">✅</span> 入会日から10日以上経過</td>
+                </tr>
+                <tr>
+                    <td><strong>支払い状況チェック</strong></td>
+                    <td><span class="badge badge-danger">❌</span> <strong>チェックしない</strong>（透過達成報酬）</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="warning-box">
+            <strong>🔔 重要</strong><br>
+            10日達成は支払い状況に関係なく送信されます。
+        </div>
+
+        <div class="page-break"></div>
+
+        <h4>月次ランクの送信条件（ビギナーⅠ〜ゴールド）</h4>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>条件項目</th>
+                    <th>詳細</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>プラン種別</td>
+                    <td><span class="badge badge-success">✅</span> スタンダード/レギュラー/プレミアム</td>
+                </tr>
+                <tr>
+                    <td>会員ステータス</td>
+                    <td><span class="badge badge-success">✅</span> アクティブ</td>
+                </tr>
+                <tr>
+                    <td>経過月数</td>
+                    <td><span class="badge badge-success">✅</span> 該当月数以上経過</td>
+                </tr>
+                <tr>
+                    <td>実行日</td>
+                    <td><span class="badge badge-success">✅</span> 月初（1日）または該当月を過ぎている</td>
+                </tr>
+                <tr>
+                    <td><strong>支払い状況</strong></td>
+                    <td><span class="badge badge-success">✅</span> <strong>前月の支払いが「支払い完了」</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="warning-box">
+            <strong>🔔 重要</strong><br>
+            月次ランクは前月の支払いが完了している必要があります。
+        </div>
+
+        <div class="page-break"></div>
+
+        <h3>📌 支払い状況チェックの詳細</h3>
+
+        <h4>チェック対象月</h4>
+        <p>システムは<strong>前月</strong>の支払い状況をチェックします。</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>実行月</th>
+                    <th>チェック対象月</th>
+                    <th>例</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>2026年2月</td>
+                    <td>2026年1月</td>
+                    <td>1月分の支払い状況</td>
+                </tr>
+                <tr>
+                    <td>2026年3月</td>
+                    <td>2026年2月</td>
+                    <td>2月分の支払い状況</td>
+                </tr>
+                <tr>
+                    <td>2026年4月</td>
+                    <td>2026年3月</td>
+                    <td>3月分の支払い状況</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h4>判定基準</h4>
+        <p><strong>支払い状況の値:</strong></p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>値</th>
+                    <th>送信可否</th>
+                    <th>説明</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>支払い完了</strong></td>
+                    <td><span class="badge badge-success">✅ 送信する</span></td>
+                    <td>正常に支払いが完了している</td>
+                </tr>
+                <tr>
+                    <td>未記入</td>
+                    <td><span class="badge badge-danger">❌ 送信しない</span></td>
+                    <td>支払い情報が記入されていない</td>
+                </tr>
+                <tr>
+                    <td>未納</td>
+                    <td><span class="badge badge-danger">❌ 送信しない</span></td>
+                    <td>支払いが確認できない</td>
+                </tr>
+                <tr>
+                    <td>その他</td>
+                    <td><span class="badge badge-danger">❌ 送信しない</span></td>
+                    <td>「支払い完了」以外はすべて送信しない</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="warning-box">
+            <strong>⚠️ 注意</strong><br>
+            空欄や「支払い完了」以外の文言はすべて未完了と判定されます。
+        </div>
+
+        <div class="page-break"></div>
+
+        <h3>📌 支払い完了後の即時送信機能</h3>
+
+        <h4>通常の送信タイミング</h4>
+        <p>月次ランクは<strong>月初（1日）</strong>に送信されます。</p>
+
+        <div class="info-box">
+            <pre>レッスン2ヶ月目: 2026年3月
+送信予定日: 2026年3月1日</pre>
+        </div>
+
+        <h4>支払い未完了の場合</h4>
+        <p>送信予定日に支払いが未完了の場合、送信はスキップされます。</p>
+
+        <div class="warning-box">
+            <pre>2026年3月1日（月初）
+├─ ビギナーⅡの送信タイミング
+├─ 前月（2月）の支払い状況: 未完了 ❌
+└─ → 送信スキップ</pre>
+        </div>
+
+        <h4>支払い完了後の動作（案1: 即時送信）</h4>
+        <p>支払い完了後、<strong>次回バッチ実行時（午後5時）</strong>に自動送信されます。</p>
+
+        <div class="success-box">
+            <pre>2026年3月5日（月の途中）
+├─ 前月（2月）の支払い状況: 支払い完了 ✅
+├─ ビギナーⅡの送信タイミングは過ぎている
+└─ → 午後5時に即座に送信 🎉</pre>
+        </div>
+
+        <div class="info-box">
+            <strong>メリット:</strong>
+            <ul>
+                <li>月初を待たずに送信</li>
+                <li>支払い完了後すぐに特典が届く</li>
+                <li>生徒様の満足度向上</li>
+            </ul>
+        </div>
+
+        <div class="page-break"></div>
+
+        <h3>📌 送信条件のフローチャート</h3>
+
+        <h4>10日達成の判定フロー</h4>
+
+        <div class="info-box">
+            <pre style="line-height: 1.4;">
+開始
+  ↓
+プラン種別チェック
+  ├─ スタンダード/レギュラー/プレミアム？
+  │   ├─ YES → 次へ
+  │   └─ NO → 送信しない ❌
+  ↓
+会員ステータスチェック
+  ├─ アクティブ？
+  │   ├─ YES → 次へ
+  │   └─ NO → 送信しない ❌
+  ↓
+経過日数チェック
+  ├─ 入会日から10日以上？
+  │   ├─ YES → 送信する ✅
+  │   └─ NO → 送信しない ❌
+            </pre>
+        </div>
+
+        <h4>月次ランクの判定フロー</h4>
+
+        <div class="info-box">
+            <pre style="line-height: 1.4;">
+開始
+  ↓
+プラン種別チェック
+  ├─ スタンダード/レギュラー/プレミアム？
+  │   ├─ YES → 次へ
+  │   └─ NO → 送信しない ❌
+  ↓
+会員ステータスチェック
+  ├─ アクティブ？
+  │   ├─ YES → 次へ
+  │   └─ NO → 送信しない ❌
+  ↓
+経過月数チェック
+  ├─ 該当月数以上経過？
+  │   ├─ YES → 次へ
+  │   └─ NO → 送信しない ❌
+  ↓
+支払い状況チェック
+  ├─ 前月が「支払い完了」？
+  │   ├─ YES → 次へ
+  │   └─ NO → 送信しない ❌
+  ↓
+タイミングチェック
+  ├─ 月初 or 該当月を過ぎている？
+  │   ├─ YES → 送信する ✅
+  │   └─ NO → 送信しない ❌
+            </pre>
+        </div>
+
+        <div class="page-break"></div>
+
+        <h2 id="plans">プラン別特典内容</h2>
+
+        <h3>スタンダードプラン</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ランク</th>
+                    <th>メッセージ取得元</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>10日達成</td><td>「10日」シート A3セル</td></tr>
+                <tr><td>ビギナーⅠ</td><td>「ビギナーl」シート A2セル</td></tr>
+                <tr><td>ビギナーⅡ</td><td>「ビギナーll」シート A2セル</td></tr>
+                <tr><td>ビギナーⅢ</td><td>「ビギナーlll」シート A2セル</td></tr>
+                <tr><td>ブロンズ</td><td>「ブロンズ」シート A2セル</td></tr>
+                <tr><td>シルバー</td><td>「シルバー」シート A2セル</td></tr>
+                <tr><td>ゴールド</td><td>「ゴールド」シート A2セル</td></tr>
+            </tbody>
+        </table>
+
+        <h3>レギュラープラン</h3>
+        <div class="info-box">
+            <strong>スタンダードプランと同じメッセージ</strong>を使用します。
+        </div>
+
+        <h3>プレミアムプラン</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ランク</th>
+                    <th>メッセージ取得元</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>10日達成</td><td>「10日」シート A6セル</td></tr>
+                <tr><td>ビギナーⅠ</td><td>「ビギナーl」シート A4セル</td></tr>
+                <tr><td>ビギナーⅡ</td><td>「ビギナーll」シート A5セル</td></tr>
+                <tr><td>ビギナーⅢ</td><td>「ビギナーlll」シート A5セル</td></tr>
+                <tr><td>ブロンズ</td><td>「ブロンズ」シート A5セル</td></tr>
+                <tr><td>シルバー</td><td>「シルバー」シート A5セル</td></tr>
+                <tr><td>ゴールド</td><td>「ゴールド」シート A5セル</td></tr>
+            </tbody>
+        </table>
+
+        <div class="page-break"></div>
+
+        <h2 id="admin">管理画面の使い方</h2>
+
+        <h3>アクセス方法</h3>
+        <div class="info-box">
+            <p><strong>管理画面URL</strong>: <code>https://wannav-benefit-system.onrender.com/</code></p>
+        </div>
+
+        <h3>画面の機能</h3>
+
+        <h4>1. システム状態表示</h4>
+        <p>現在の定期実行状態と最終実行結果を確認できます。</p>
+        <ul>
+            <li><strong>定期実行</strong>: 有効 / 無効</li>
+            <li><strong>最終実行日時</strong>: 最後に実行された日時</li>
+            <li><strong>送信状況</strong>: 成功件数 / スキップ件数 / 失敗件数</li>
+        </ul>
+
+        <h4>2. 手動実行ボタン</h4>
+        <p>「▶️ 手動実行」ボタンで、定期実行を待たずに即座にバッチ処理を実行できます。</p>
+
+        <div class="info-box">
+            <strong>使用シーン:</strong>
+            <ul>
+                <li>設定変更後の動作確認</li>
+                <li>緊急での特典送信</li>
+                <li>テスト実行</li>
+            </ul>
+        </div>
+
+        <h4>3. テスト送信機能</h4>
+        <p>「🧪 テスト送信」ボタンで、固定のテストチャンネルにメッセージを送信できます。</p>
+
+        <div class="info-box">
+            <strong>設定項目:</strong>
+            <ul>
+                <li>プランタイプ: スタンダード / レギュラー / プレミアム</li>
+                <li>特典ランク: 10日達成 / ビギナーⅠ〜Ⅲ / ブロンズ / シルバー / ゴールド</li>
+            </ul>
+        </div>
+
+        <div class="info-box">
+            <strong>使用シーン:</strong>
+            <ul>
+                <li>メッセージ内容の確認</li>
+                <li>画像添付の確認</li>
+                <li>システム動作テスト</li>
+            </ul>
+        </div>
+
+        <h4>4. 送信履歴</h4>
+        <p>生徒別の最新送信状態を確認できます。</p>
+
+        <div class="info-box">
+            <strong>表示項目:</strong>
+            <ul>
+                <li>生徒名</li>
+                <li>学籍番号</li>
+                <li>プラン種別</li>
+                <li>最後に送信した特典</li>
+                <li>送信日時</li>
+            </ul>
+        </div>
+
+        <h4>5. 送信ログ</h4>
+        <p>直近50件の送信ログを確認できます。</p>
+
+        <div class="info-box">
+            <strong>表示項目:</strong>
+            <ul>
+                <li>送信日時</li>
+                <li>生徒名</li>
+                <li>学籍番号</li>
+                <li>送信した特典</li>
+                <li>プラン種別</li>
+                <li>送信状態（成功 / 失敗）</li>
+            </ul>
+        </div>
+
+        <h4>6. ランク別画像管理</h4>
+        <p>各ランクに対応する画像をアップロード・削除できます。</p>
+
+        <div class="info-box">
+            <strong>対応ランク:</strong>
+            <ul>
+                <li>10日達成</li>
+                <li>ビギナーⅠ / Ⅱ / Ⅲ</li>
+                <li>ブロンズ / シルバー / ゴールド</li>
+            </ul>
+        </div>
+
+        <div class="warning-box">
+            <strong>画像の要件:</strong>
+            <ul>
+                <li>形式: PNG / JPEG / GIF / WEBP</li>
+                <li>サイズ: 最大10MB</li>
+                <li>推奨: 1920×1080以下、2MB以下</li>
+            </ul>
+        </div>
+
+        <div class="page-break"></div>
+
+        <h2 id="spreadsheet">スプレッドシート設定</h2>
+
+        <h3>必要なスプレッドシート</h3>
+
+        <h4>1. 生徒情報スプレッドシート</h4>
+
+        <p><strong>シート名: ❶RAW_生徒様情報</strong></p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>列</th>
+                    <th>項目</th>
+                    <th>必須</th>
+                    <th>説明</th>
+                    <th>例</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>A</td>
+                    <td>生徒名</td>
+                    <td><span class="badge badge-success">✅</span></td>
+                    <td>フルネーム</td>
+                    <td>山田太郎</td>
+                </tr>
+                <tr>
+                    <td>B</td>
+                    <td>学籍番号</td>
+                    <td><span class="badge badge-success">✅</span></td>
+                    <td>一意の識別子</td>
+                    <td>OLWV250027-KU</td>
+                </tr>
+                <tr>
+                    <td>C</td>
+                    <td>プラン種別</td>
+                    <td><span class="badge badge-success">✅</span></td>
+                    <td>スタンダード/レギュラー/プレミアム</td>
+                    <td>スタンダードプラン</td>
+                </tr>
+                <tr>
+                    <td>D</td>
+                    <td>会員ステータス</td>
+                    <td><span class="badge badge-success">✅</span></td>
+                    <td>アクティブ/休会中/退会</td>
+                    <td>アクティブ</td>
+                </tr>
+                <tr>
+                    <td>G</td>
+                    <td>DiscordユーザーID</td>
+                    <td><span class="badge badge-info">⭕</span></td>
+                    <td>メンション用（18桁）</td>
+                    <td>123456789012345678</td>
+                </tr>
+                <tr>
+                    <td>M</td>
+                    <td>DiscordチャンネルURL</td>
+                    <td><span class="badge badge-success">✅</span></td>
+                    <td>送信先URL</td>
+                    <td>https://discord.com/channels/...</td>
+                </tr>
+                <tr>
+                    <td>U</td>
+                    <td>レッスン開始日</td>
+                    <td><span class="badge badge-success">✅</span></td>
+                    <td>YYYY/MM/DD形式</td>
+                    <td>2025/12/01</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="warning-box">
+            <strong>⚠️ 注意事項:</strong>
+            <ul>
+                <li><strong>会員ステータスは必ず「アクティブ」と記入</strong>（完全一致）</li>
+                <li>プラン種別も完全一致が必要</li>
+                <li>空欄は対象外になります</li>
+            </ul>
+        </div>
+
+        <div class="page-break"></div>
+
+        <p><strong>シート名: ❸契約後チェックシート</strong></p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>列</th>
+                    <th>項目</th>
+                    <th>必須</th>
+                    <th>説明</th>
+                    <th>例</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>B</td>
+                    <td>入会日</td>
+                    <td><span class="badge badge-success">✅</span></td>
+                    <td>YYYY/MM/DD形式</td>
+                    <td>2025/11/20</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="warning-box">
+            <strong>⚠️ 注意事項:</strong>
+            <ul>
+                <li>4行目以降が有効データ</li>
+                <li>❶RAW_生徒様情報と行番号を合わせる必要があります</li>
+            </ul>
+        </div>
+
+        <div class="page-break"></div>
+
+        <p><strong>シート名: RAW_支払い状況</strong></p>
+
+        <div class="info-box">
+            <p><strong>ヘッダー行: 13行目</strong></p>
+            <p><strong>データ行: 14行目以降</strong></p>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>列</th>
+                    <th>項目</th>
+                    <th>形式</th>
+                    <th>例</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>C</td>
+                    <td>学籍番号</td>
+                    <td>テキスト</td>
+                    <td>OLWV250027-KU</td>
+                </tr>
+                <tr>
+                    <td>D〜</td>
+                    <td>月別支払い状況</td>
+                    <td>ヘッダー: YYYY/M</td>
+                    <td>2026/1</td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td>データ: 支払い完了 or その他</td>
+                    <td>支払い完了</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="error-box">
+            <strong>⚠️ ヘッダー形式の重要な注意点:</strong>
+            <ul>
+                <li><span class="badge badge-success">✅</span> 正しい: <code>2026/1</code>, <code>2026/12</code></li>
+                <li><span class="badge badge-danger">❌</span> 間違い: <code>2026/01</code>, <code>2026/012</code></li>
+            </ul>
+            <p><strong>月が1桁の場合はゼロ埋めしない</strong></p>
+        </div>
+
+        <div class="warning-box">
+            <strong>支払い状況の記入:</strong>
+            <ul>
+                <li><span class="badge badge-success">✅</span> 送信する: <code>支払い完了</code>（完全一致）</li>
+                <li><span class="badge badge-danger">❌</span> 送信しない: 上記以外（空欄含む）</li>
+            </ul>
+        </div>
+
+        <div class="page-break"></div>
+
+        <h4>2. 特典メッセージスプレッドシート</h4>
+
+        <p>各シートに特典メッセージを記入します。</p>
+
+        <div class="info-box">
+            <strong>シート一覧:</strong>
+            <ul>
+                <li>10日</li>
+                <li>ビギナーl（エル）</li>
+                <li>ビギナーll（エル2つ）</li>
+                <li>ビギナーlll（エル3つ）</li>
+                <li>ブロンズ</li>
+                <li>シルバー</li>
+                <li>ゴールド</li>
+            </ul>
+        </div>
+
+        <div class="warning-box">
+            <strong>⚠️ 注意事項:</strong>
+            <ul>
+                <li>プラン別に指定のセルにメッセージを記入</li>
+                <li>セルが空欄の場合、送信に失敗します</li>
+            </ul>
+        </div>
+
+        <div class="page-break"></div>
+
+        <h2 id="faq">よくある質問</h2>
+
+        <h3>Q1. 特典が送信されません</h3>
+
+        <div class="warning-box">
+            <strong>確認項目:</strong>
+            <ol>
+                <li><strong>会員ステータス</strong>
+                    <ul>
+                        <li>「アクティブ」と完全一致していますか？</li>
+                        <li>空欄やスペースがありませんか？</li>
+                    </ul>
+                </li>
+                <li><strong>プラン種別</strong>
+                    <ul>
+                        <li>スタンダードプラン / レギュラープラン / プレミアムプランのいずれかですか？</li>
+                    </ul>
+                </li>
+                <li><strong>支払い状況</strong>（月次ランクの場合）
+                    <ul>
+                        <li>前月の列が「支払い完了」ですか？</li>
+                        <li>ヘッダー形式は正しいですか？（2026/1）</li>
+                    </ul>
+                </li>
+                <li><strong>タイミング</strong>
+                    <ul>
+                        <li>10日達成: 入会日から10日以上経過していますか？</li>
+                        <li>月次ランク: 該当月の月初ですか？</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+
+        <h3>Q2. 月初に送信されなかった特典は諦めるしかない？</h3>
+
+        <div class="success-box">
+            <p><strong>いいえ、支払い完了後に自動送信されます。</strong></p>
+            <p>例:</p>
+            <pre>3月1日: 支払い未完了でスキップ
+↓
+3月5日: 支払い完了
+↓
+3月5日 午後5時: 自動送信 ✅</pre>
+            <p>月初を過ぎても、支払いが完了すれば次回バッチ実行時（毎日午後5時）に送信されます。</p>
+        </div>
+
+        <h3>Q3. 10日達成と月次ランクの違いは？</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>項目</th>
+                    <th>10日達成</th>
+                    <th>月次ランク</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>基準日</td>
+                    <td>入会日</td>
+                    <td>レッスン開始日</td>
+                </tr>
+                <tr>
+                    <td>送信タイミング</td>
+                    <td>10日経過後</td>
+                    <td>月初（1日）</td>
+                </tr>
+                <tr>
+                    <td>支払いチェック</td>
+                    <td><strong>なし</strong></td>
+                    <td><strong>あり</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="info-box">
+            <p>10日達成は支払い状況に関係なく送信されます（透過達成報酬）。</p>
+        </div>
+
+        <h3>Q4. 支払い状況のヘッダー形式を間違えました</h3>
+
+        <div class="error-box">
+            <p><strong>正しい形式:</strong></p>
+            <ul>
+                <li><span class="badge badge-success">✅</span> <code>2026/1</code>, <code>2026/2</code>, ..., <code>2026/12</code></li>
+                <li><span class="badge badge-danger">❌</span> <code>2026/01</code>, <code>2026/02</code>（ゼロ埋め不要）</li>
+            </ul>
+        </div>
+
+        <div class="success-box">
+            <p><strong>修正後:</strong></p>
+            <p>次回バッチ実行時（午後5時）から正しく判定されます。</p>
+        </div>
+
+        <h3>Q5. 会員ステータスを「休会中」から「アクティブ」に戻しました</h3>
+
+        <div class="success-box">
+            <p><strong>動作:</strong></p>
+            <ul>
+                <li>次回バッチ実行時（午後5時）から送信対象になります</li>
+                <li>過去にスキップされた特典も自動的に送信されます</li>
+            </ul>
+        </div>
+
+        <h3>Q6. DiscordユーザーIDはどこで確認できますか？</h3>
+
+        <div class="info-box">
+            <p><strong>手順:</strong></p>
+            <ol>
+                <li>Discordアプリを開く</li>
+                <li>⚙️設定 → 詳細設定</li>
+                <li>「開発者モード」を有効化</li>
+                <li>ユーザーを右クリック → 「IDをコピー」</li>
+                <li>スプレッドシートのG列に貼り付け</li>
+            </ol>
+        </div>
+
+        <h3>Q7. 画像が送信されません</h3>
+
+        <div class="warning-box">
+            <p><strong>確認項目:</strong></p>
+            <ol>
+                <li>管理画面で該当ランクの画像がアップロードされていますか？</li>
+                <li>画像サイズは10MB以下ですか？</li>
+                <li>対応形式（PNG/JPEG/GIF/WEBP）ですか？</li>
+            </ol>
+        </div>
+
+        <div class="info-box">
+            <p><strong>画像がない場合:</strong></p>
+            <p>テキストのみで送信されます（エラーにはなりません）。</p>
+        </div>
+
+        <h3>Q8. テスト送信とは？</h3>
+
+        <div class="info-box">
+            <p><strong>機能:</strong></p>
+            <p>固定のテストチャンネルに、指定したプラン・ランクのメッセージを送信できます。</p>
+            
+            <p><strong>用途:</strong></p>
+            <ul>
+                <li>メッセージ内容の確認</li>
+                <li>画像添付の確認</li>
+                <li>システム動作の確認</li>
+            </ul>
+        </div>
+
+        <div class="warning-box">
+            <p><strong>注意:</strong></p>
+            <ul>
+                <li>テスト送信は履歴に記録されません</li>
+                <li>実際の生徒様への送信には影響しません</li>
+            </ul>
+        </div>
+
+        <h3>Q9. 手動実行はいつ使いますか？</h3>
+
+        <div class="info-box">
+            <p><strong>使用シーン:</strong></p>
+            <ol>
+                <li><strong>設定変更後の確認</strong>
+                    <ul>
+                        <li>スプレッドシート更新後</li>
+                        <li>画像アップロード後</li>
+                    </ul>
+                </li>
+                <li><strong>緊急送信</strong>
+                    <ul>
+                        <li>定期実行を待たずに送信したい場合</li>
+                    </ul>
+                </li>
+                <li><strong>テスト実行</strong>
+                    <ul>
+                        <li>本番運用前の動作確認</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+
+        <div class="warning-box">
+            <p><strong>注意:</strong></p>
+            <ul>
+                <li>実際の生徒様に送信されます</li>
+                <li>送信条件を満たす生徒様のみに送信されます</li>
+            </ul>
+        </div>
+
+        <h3>Q10. 複数のランクが同時に送信されますか？</h3>
+
+        <div class="error-box">
+            <p><strong>いいえ、順番に送信されます。</strong></p>
+        </div>
+
+        <div class="info-box">
+            <p><strong>送信順序:</strong></p>
+            <ol>
+                <li>10日達成</li>
+                <li>ビギナーⅠ</li>
+                <li>ビギナーⅡ</li>
+                <li>ビギナーⅢ</li>
+                <li>ブロンズ</li>
+                <li>シルバー</li>
+                <li>ゴールド</li>
+                <li>プラチナ</li>
+                <li>ブラック</li>
+            </ol>
+            
+            <p><strong>例:</strong></p>
+            <p>ビギナーⅠを飛ばしてビギナーⅡを送信することはできません。</p>
+        </div>
+
+        <div class="page-break"></div>
+
+        <div class="footer">
+            <h2>サポート</h2>
+            <p>ご不明な点がございましたら、システム管理者までお問い合わせください。</p>
+            <p><strong>管理画面URL</strong>: <code>https://wannav-benefit-system.onrender.com/</code></p>
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
+            <p><strong>WannaV VTuber育成スクール</strong></p>
+            <p>© 2026 All Rights Reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
