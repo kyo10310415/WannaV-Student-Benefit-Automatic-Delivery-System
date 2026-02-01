@@ -9,7 +9,8 @@
     "register:10day": "node scripts/register-10day-completed.js",
     "migrate": "node scripts/run-migration.js",
     "check:db": "node scripts/check-database.js",
-    "test:log": "node scripts/test-log-creation.js"
+    "test:log": "node scripts/test-log-creation.js",
+    "fix:logs": "node scripts/fix-missing-logs.js"
   },
   "keywords": [
     "wannav",
