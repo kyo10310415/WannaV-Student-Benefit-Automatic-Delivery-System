@@ -144,6 +144,7 @@ async function getMessageForBenefit(planType, benefitRank) {
 }
 
 // 支払い状況を取得（RAW_支払い状況シート）
+// L列: クレカ登録状況も同時に取得
 async function getPaymentStatus() {
   try {
     // ヘッダー行（13行目）を取得
@@ -177,13 +178,18 @@ async function getPaymentStatus() {
     console.log(`✅ 前月の支払い状況列を検出: ${headers[targetColumnIndex]} (列インデックス: ${targetColumnIndex})`);
     
     // 学籍番号と支払い状況のマップを作成
+    // { studentId: { paymentStatus: '支払い完了', creditCardRegistered: '登録済み' } }
     const paymentStatusMap = {};
     for (const row of paymentData) {
       const studentId = row[2]; // C列: 学籍番号
       const paymentStatus = row[targetColumnIndex] || '';
+      const creditCardRegistered = row[11] || ''; // L列: クレカ登録状況（0-indexed で11）
       
       if (studentId) {
-        paymentStatusMap[studentId] = paymentStatus;
+        paymentStatusMap[studentId] = {
+          paymentStatus: paymentStatus,
+          creditCardRegistered: creditCardRegistered
+        };
       }
     }
     

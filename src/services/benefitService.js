@@ -104,12 +104,20 @@ async function processBenefitForStudent(student, enrollmentDate, paymentStatusMa
     
     // 10日達成以外は支払い状況をチェック
     if (currentRank !== '10日達成') {
-      const paymentStatus = paymentStatusMap[student.studentId];
-      if (paymentStatus !== '支払い完了') {
-        console.log(`  💳 ${student.studentName}: 前月の支払い未完了 (${paymentStatus || '未記入'}) - スキップ`);
-        return { success: true, skipped: true, reason: 'payment_pending' };
+      const paymentInfo = paymentStatusMap[student.studentId];
+      
+      // クレカ登録済みの場合は支払い状況チェックをスキップ
+      if (paymentInfo && paymentInfo.creditCardRegistered === '登録済み') {
+        console.log(`  💳 ${student.studentName}: クレカ登録済み - 支払い状況チェックをスキップ`);
+      } else {
+        // クレカ未登録の場合は支払い状況をチェック
+        const paymentStatus = paymentInfo ? paymentInfo.paymentStatus : '';
+        if (paymentStatus !== '支払い完了') {
+          console.log(`  💳 ${student.studentName}: 前月の支払い未完了 (${paymentStatus || '未記入'}) - スキップ`);
+          return { success: true, skipped: true, reason: 'payment_pending' };
+        }
+        console.log(`  ✅ ${student.studentName}: 前月の支払い完了確認`);
       }
-      console.log(`  ✅ ${student.studentName}: 前月の支払い完了確認`);
     } else {
       console.log(`  ✨ ${student.studentName}: 10日達成 - 支払い状況チェックをスキップ`);
     }
