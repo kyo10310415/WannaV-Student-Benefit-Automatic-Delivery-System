@@ -6,7 +6,8 @@
     "start": "node src/index.js",
     "dev": "node src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "register:10day": "node scripts/register-10day-completed.js"
+    "register:10day": "node scripts/register-10day-completed.js",
+    "migrate": "node scripts/run-migration.js"
   },
   "keywords": [
     "wannav",
