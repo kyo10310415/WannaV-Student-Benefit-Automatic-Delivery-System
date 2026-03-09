@@ -1,5 +1,6 @@
 const { google } = require('googleapis');
 const path = require('path');
+const { parseDate } = require('../utils/dateUtils');
 require('dotenv').config();
 
 // Google Sheets APIクライアント初期化
@@ -73,12 +74,50 @@ async function getStudentInfo() {
   return students;
 }
 
-// 入会日を取得（❸契約後チェックシート）
+// 入会日を取得（❸契約後チェックシート）- 削除予定
 async function getEnrollmentDates() {
   const data = await getSheetData(STUDENT_INFO_SPREADSHEET_ID, '❸契約後チェックシート!B4:B');
   
   // B列のデータを配列として返す（4行目以降）
   return data.map(row => row[0] || '');
+}
+
+// 10日達成用の日付を取得（❹オンボーディングシート R列＋2日）
+async function getTenDayAchievementDates() {
+  try {
+    // A列（学籍番号）とR列（日付）を取得（4行目以降）
+    const data = await getSheetData(STUDENT_INFO_SPREADSHEET_ID, '❹オンボーディングシート!A4:R');
+    
+    // 学籍番号と10日達成日のマップを作成
+    // { studentId: '2026/03/12' }
+    const achievementDateMap = {};
+    
+    for (const row of data) {
+      const studentId = row[0] || ''; // A列: 学籍番号
+      const rColumnDate = row[17] || ''; // R列: 日付（0-indexed で17）
+      
+      if (studentId && rColumnDate) {
+        // R列の日付に2日を加算
+        const baseDate = parseDate(rColumnDate);
+        if (baseDate) {
+          const achievementDate = new Date(baseDate);
+          achievementDate.setDate(achievementDate.getDate() + 2); // +2日
+          
+          // YYYY/MM/DD 形式で保存
+          const year = achievementDate.getFullYear();
+          const month = achievementDate.getMonth() + 1;
+          const day = achievementDate.getDate();
+          achievementDateMap[studentId] = `${year}/${month}/${day}`;
+        }
+      }
+    }
+    
+    console.log(`✅ 10日達成日を取得: ${Object.keys(achievementDateMap).length}件`);
+    return achievementDateMap;
+  } catch (error) {
+    console.error('❌ 10日達成日取得エラー:', error);
+    return {};
+  }
 }
 
 // 特典メッセージを取得
@@ -198,6 +237,7 @@ module.exports = {
   initializeGoogleSheets,
   getStudentInfo,
   getEnrollmentDates,
+  getTenDayAchievementDates,
   getMessageForBenefit,
   getPaymentStatus,
   STUDENT_INFO_SPREADSHEET_ID,

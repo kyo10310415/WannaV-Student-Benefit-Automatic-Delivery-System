@@ -1,11 +1,11 @@
-const { getStudentInfo, getEnrollmentDates, getMessageForBenefit, getPaymentStatus } = require('./googleSheets');
+const { getStudentInfo, getEnrollmentDates, getTenDayAchievementDates, getMessageForBenefit, getPaymentStatus } = require('./googleSheets');
 const { sendDiscordMessage } = require('./discord');
 const { getOrCreateStudentHistory, updateBenefitHistory, setPendingBenefit, createSendLog, getBenefitImage } = require('../db/database');
 const { parseDate, getDaysDifference, getMonthsDifference, getJapanTime } = require('../utils/dateUtils');
 
 // ランク定義（日数・月数ベース）
 const RANK_DEFINITIONS = [
-  { rank: '10日達成', type: 'days', value: 10, fromEnrollment: true },
+  { rank: '10日達成', type: 'achievement', fromOnboarding: true },  // ❹オンボーディングシート R列+2日
   { rank: 'ビギナーⅠ', type: 'months', value: 0, fromLessonStart: true },  // レッスン開始月
   { rank: 'ビギナーⅡ', type: 'months', value: 1, fromLessonStart: true },  // レッスン2ヶ月目
   { rank: 'ビギナーⅢ', type: 'months', value: 2, fromLessonStart: true },  // レッスン3ヶ月目
@@ -19,16 +19,11 @@ const RANK_DEFINITIONS = [
 /**
  * 生徒が現在達成すべきランクを判定
  * 支払い完了後すぐに送信: 過去の該当月を過ぎている場合は月初でなくても送信
+ * 10日達成: ❹オンボーディングシート R列+2日
  */
-function determineCurrentRank(enrollmentDate, lessonStartDate, lastSentRank) {
+function determineCurrentRank(studentId, tenDayAchievementDateMap, lessonStartDate, lastSentRank) {
   const now = getJapanTime();
-  const enrollment = parseDate(enrollmentDate);
   const lessonStart = parseDate(lessonStartDate);
-  
-  if (!enrollment) {
-    console.warn('⚠️ 入会日が不正です');
-    return null;
-  }
   
   // 送信済みランクのインデックスを取得
   const lastRankIndex = lastSentRank 
@@ -39,10 +34,22 @@ function determineCurrentRank(enrollmentDate, lessonStartDate, lastSentRank) {
   for (let i = lastRankIndex + 1; i < RANK_DEFINITIONS.length; i++) {
     const rankDef = RANK_DEFINITIONS[i];
     
-    // 10日達成の判定（入会日から10日経過）
-    if (rankDef.fromEnrollment) {
-      const daysSinceEnrollment = getDaysDifference(enrollment, now);
-      if (daysSinceEnrollment >= rankDef.value) {
+    // 10日達成の判定（❹オンボーディングシート R列+2日）
+    if (rankDef.fromOnboarding) {
+      const achievementDateStr = tenDayAchievementDateMap[studentId];
+      if (!achievementDateStr) {
+        console.warn(`⚠️ ${studentId}: ❹オンボーディングシートに10日達成日が見つかりません`);
+        continue; // 次のランクへ
+      }
+      
+      const achievementDate = parseDate(achievementDateStr);
+      if (!achievementDate) {
+        console.warn(`⚠️ ${studentId}: 10日達成日の形式が不正です (${achievementDateStr})`);
+        continue;
+      }
+      
+      // 現在日時が10日達成日以降かチェック
+      if (now >= achievementDate) {
         return rankDef.rank;
       }
     }
@@ -76,7 +83,7 @@ function determineCurrentRank(enrollmentDate, lessonStartDate, lastSentRank) {
 /**
  * 単一生徒の特典送信処理
  */
-async function processBenefitForStudent(student, enrollmentDate, paymentStatusMap) {
+async function processBenefitForStudent(student, tenDayAchievementDateMap, paymentStatusMap) {
   try {
     console.log(`\n📝 処理開始: ${student.studentName} (${student.studentId})`);
     
@@ -85,14 +92,15 @@ async function processBenefitForStudent(student, enrollmentDate, paymentStatusMa
       studentName: student.studentName,
       studentId: student.studentId,
       planType: student.planType,
-      enrollmentDate: enrollmentDate,
+      enrollmentDate: null, // 不要になった
       lessonStartDate: student.lessonStartDate,
       discordChannelUrl: student.discordChannelUrl
     });
     
     // 現在達成すべきランクを判定
     const currentRank = determineCurrentRank(
-      enrollmentDate,
+      student.studentId,
+      tenDayAchievementDateMap,
       student.lessonStartDate,
       history.last_benefit_rank
     );
@@ -212,7 +220,7 @@ async function processAllBenefits() {
     // Google Sheetsから生徒情報を取得
     console.log('\n📊 Google Sheetsからデータ取得中...');
     const students = await getStudentInfo();
-    const enrollmentDates = await getEnrollmentDates();
+    const tenDayAchievementDateMap = await getTenDayAchievementDates();
     const paymentStatusMap = await getPaymentStatus();
     
     console.log(`✅ 取得完了: 対象生徒 ${students.length}名`);
@@ -222,9 +230,8 @@ async function processAllBenefits() {
     // 各生徒を処理
     for (let i = 0; i < students.length; i++) {
       const student = students[i];
-      const enrollmentDate = enrollmentDates[i] || null;
       
-      const result = await processBenefitForStudent(student, enrollmentDate, paymentStatusMap);
+      const result = await processBenefitForStudent(student, tenDayAchievementDateMap, paymentStatusMap);
       
       if (result.success) {
         if (result.skipped) {
