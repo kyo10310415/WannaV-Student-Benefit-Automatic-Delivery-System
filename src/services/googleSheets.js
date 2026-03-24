@@ -56,9 +56,9 @@ async function getStudentInfo() {
     const memberStatus = row[3]; // D列: 会員ステータス
     
     // スタンダードプラン、レギュラープラン、プレミアムプランが対象
-    // かつ会員ステータスが「アクティブ」の場合のみ
+    // かつ会員ステータスが「アクティブ」または「レッスン準備中」の場合
     if ((planType === 'スタンダードプラン' || planType === 'レギュラープラン' || planType === 'プレミアムプラン') 
-        && memberStatus === 'アクティブ') {
+        && (memberStatus === 'アクティブ' || memberStatus === 'レッスン準備中')) {
       students.push({
         studentName: row[0] || '',           // A列: 生徒名
         studentId: (row[1] || '').trim(),    // B列: 学籍番号（前後の空白を除去）
