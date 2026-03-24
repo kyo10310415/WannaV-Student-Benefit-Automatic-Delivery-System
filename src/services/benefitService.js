@@ -38,20 +38,24 @@ function determineCurrentRank(studentId, tenDayAchievementDateMap, lessonStartDa
     if (rankDef.fromOnboarding) {
       const achievementDateStr = tenDayAchievementDateMap[studentId];
       if (!achievementDateStr) {
-        console.warn(`⚠️ ${studentId}: ❹オンボーディングシートに10日達成日が見つかりません`);
-        continue; // 次のランクへ
+        // 達成日が見つからない = まだオンボーディング未完了
+        // 次のランクへは進まず、処理を完全に停止する
+        console.warn(`⚠️ ${studentId}: ❹オンボーディングシートに10日達成日が見つかりません（まだ特典送信不可）`);
+        return null;
       }
       
       const achievementDate = parseDate(achievementDateStr);
       if (!achievementDate) {
         console.warn(`⚠️ ${studentId}: 10日達成日の形式が不正です (${achievementDateStr})`);
-        continue;
+        return null;
       }
       
       // 現在日時が10日達成日以降かチェック
       if (now >= achievementDate) {
         return rankDef.rank;
       }
+      // 10日達成日が未来 → まだ送信タイミングではない → 以降のランクも送らない
+      return null;
     }
     
     // 月次ランクの判定（レッスン開始日から○ヶ月目の月初）

@@ -61,7 +61,7 @@ async function getStudentInfo() {
         && memberStatus === 'アクティブ') {
       students.push({
         studentName: row[0] || '',           // A列: 生徒名
-        studentId: row[1] || '',             // B列: 学籍番号
+        studentId: (row[1] || '').trim(),    // B列: 学籍番号（前後の空白を除去）
         planType: planType,                  // C列: プラン種別
         memberStatus: memberStatus,          // D列: 会員ステータス
         discordUserId: row[6] || '',         // G列: DiscordユーザーID
@@ -93,8 +93,8 @@ async function getTenDayAchievementDates() {
     const achievementDateMap = {};
     
     for (const row of data) {
-      const studentId = row[0] || ''; // A列: 学籍番号
-      const rColumnDate = row[17] || ''; // R列: 日付（0-indexed で17）
+      const studentId = (row[0] || '').trim(); // A列: 学籍番号（前後の空白を除去）
+      const rColumnDate = (row[17] || '').trim(); // R列: 日付（0-indexed で17、前後の空白を除去）
       
       if (studentId && rColumnDate) {
         // R列の日付に2日を加算
@@ -192,9 +192,9 @@ async function getPaymentStatus() {
     // データ行（14行目以降）を取得
     const paymentData = await getSheetData(STUDENT_INFO_SPREADSHEET_ID, 'RAW_支払い状況!A14:ZZ');
     
-    // 現在の年月を取得（前月）
-    const now = new Date();
-    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    // 現在の年月を取得（前月）※日本時間基準で計算
+    const nowJst = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+    const lastMonth = new Date(nowJst.getFullYear(), nowJst.getMonth() - 1, 1);
     const targetYearMonth = `${lastMonth.getFullYear()}/${lastMonth.getMonth() + 1}`; // 0埋めなし
     
     console.log(`💰 支払い状況チェック: 前月 ${targetYearMonth}`);
@@ -218,7 +218,7 @@ async function getPaymentStatus() {
     // 学籍番号と支払い状況のマップを作成
     const paymentStatusMap = {};
     for (const row of paymentData) {
-      const studentId = row[2]; // C列: 学籍番号
+      const studentId = (row[2] || '').trim(); // C列: 学籍番号（前後の空白を除去）
       const paymentStatus = row[targetColumnIndex] || '';
       
       if (studentId) {

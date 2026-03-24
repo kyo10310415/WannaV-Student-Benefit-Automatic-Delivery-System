@@ -1,12 +1,27 @@
 /**
  * 日付文字列をパース（様々な形式に対応）
+ * YYYY/MM/DD, YYYY-MM-DD 形式を UTC 00:00:00 として解釈する
  */
 function parseDate(dateString) {
   if (!dateString) return null;
   
   try {
-    // YYYY/MM/DD, YYYY-MM-DD, MM/DD/YYYY などに対応
-    const date = new Date(dateString);
+    const str = String(dateString).trim();
+    
+    // YYYY/MM/DD または YYYY-MM-DD 形式（例: 2026/3/24, 2026/03/24, 2026-03-24）
+    const slashMatch = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if (slashMatch) {
+      const year  = parseInt(slashMatch[1], 10);
+      const month = parseInt(slashMatch[2], 10);
+      const day   = parseInt(slashMatch[3], 10);
+      // UTC 00:00:00 として生成（タイムゾーンに依存しない）
+      const date = new Date(Date.UTC(year, month - 1, day));
+      if (isNaN(date.getTime())) return null;
+      return date;
+    }
+    
+    // その他の形式はフォールバックとして new Date() で試みる
+    const date = new Date(str);
     if (isNaN(date.getTime())) return null;
     return date;
   } catch (error) {
@@ -40,9 +55,13 @@ function isFirstDayOfMonth(date) {
 
 /**
  * 現在の日本時間を取得
+ * UTC+9 オフセットをタイムスタンプに加算して返す
+ * ※ 返り値の getFullYear/getMonth/getDate/getHours は JST の値として扱うこと
  */
 function getJapanTime() {
-  return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+  // UTC タイムスタンプに 9 時間分を加算して JST のタイムスタンプとして扱う
+  const utcNow = new Date();
+  return new Date(utcNow.getTime() + 9 * 60 * 60 * 1000);
 }
 
 /**
