@@ -119,6 +119,11 @@ async function processBenefitForStudent(student, tenDayAchievementDateMap, payme
       const paymentStatus = paymentStatusMap[student.studentId];
       if (paymentStatus !== '支払い完了') {
         console.log(`  💳 ${student.studentName}: 前月の支払い未完了 (${paymentStatus || '未記入'}) - スキップ`);
+        // スキップしたランクをDBに記録（まだ記録されていない場合のみ更新）
+        if (history.pending_benefit_rank !== currentRank) {
+          await setPendingBenefit(student.studentId, currentRank);
+          console.log(`  📝 ${student.studentName}: ペンディング登録 → ${currentRank}`);
+        }
         return { success: true, skipped: true, reason: 'payment_pending' };
       }
       console.log(`  ✅ ${student.studentName}: 前月の支払い完了確認`);
