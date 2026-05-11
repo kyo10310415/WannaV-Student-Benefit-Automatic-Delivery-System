@@ -5,10 +5,13 @@ const multer = require('multer');
 const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
-const { initializeDatabase, getAllBenefitHistory, getSendLogs, saveBenefitImage, getBenefitImage, getAllBenefitImages, deleteBenefitImage } = require('./db/database');
-const { initializeGoogleSheets, getMessageForBenefit } = require('./services/googleSheets');
+const { initializeDatabase, getAllBenefitHistory, getSendLogs, saveBenefitImage, getBenefitImage, getAllBenefitImages, deleteBenefitImage,
+  getAllMissionMessages, updateMissionMessage, getAllStudentMissions, getStudentMission, startMission, setMissionCompleted, setMissionSentAt
+} = require('./db/database');
+const { initializeGoogleSheets, getMessageForBenefit, getMissionStudentList } = require('./services/googleSheets');
 const { initializeDiscordBot, sendDiscordMessage } = require('./services/discord');
 const { processAllBenefits } = require('./services/benefitService');
+const { sendMission1, sendMissionN, processMissionAutoSend } = require('./services/missionService');
 const { formatDateTime } = require('./utils/dateUtils');
 const ssoAuth = require('../middleware/sso-auth-middleware');
 
@@ -53,6 +56,9 @@ app.use((req, res, next) => {
 let isProcessing = false;
 let lastRunTime = null;
 let lastRunResult = null;
+
+// ミッション機能ON/OFF（メモリ上で保持、再起動時は環境変数またはデフォルトOFF）
+let missionEnabled = process.env.ENABLE_MISSION === 'true';
 
 // ルート: トップページ（管理画面）
 app.get('/', async (req, res) => {
@@ -283,7 +289,101 @@ app.delete('/api/image/:benefitRank', async (req, res) => {
   }
 });
 
+// ========================================
+// ミッション管理ページ
+// ========================================
+app.get('/mission', async (req, res) => {
+  try {
+    const [messages, sheetStudents, dbMissions] = await Promise.all([
+      getAllMissionMessages(),
+      getMissionStudentList(),
+      getAllStudentMissions()
+    ]);
+
+    // DBのミッション進捗をstudentIdで引けるMapに変換
+    const missionMap = {};
+    for (const m of dbMissions) {
+      missionMap[m.student_id] = m;
+    }
+
+    res.render('mission', {
+      messages,
+      sheetStudents,
+      missionMap,
+      missionEnabled,
+      formatDateTime
+    });
+  } catch (error) {
+    console.error('ミッション管理画面エラー:', error);
+    res.status(500).send('ミッション管理画面の表示に失敗しました');
+  }
+});
+
+// API: ミッション機能ON/OFFトグル
+app.post('/api/mission/toggle', (req, res) => {
+  missionEnabled = !missionEnabled;
+  console.log(`🎯 ミッション機能: ${missionEnabled ? 'ON' : 'OFF'}`);
+  res.json({ success: true, missionEnabled });
+});
+
+// API: ミッションメッセージ保存
+app.post('/api/mission/message', async (req, res) => {
+  const { missionNo, messageContent } = req.body;
+  if (!missionNo || messageContent === undefined) {
+    return res.status(400).json({ success: false, message: 'missionNo と messageContent は必須です' });
+  }
+  try {
+    await updateMissionMessage(parseInt(missionNo), messageContent);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('ミッションメッセージ保存エラー:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// API: ミッション開始（ミッション1送信）
+app.post('/api/mission/start', async (req, res) => {
+  const { studentId, studentName, discordChannelUrl } = req.body;
+  if (!studentId || !studentName || !discordChannelUrl) {
+    return res.status(400).json({ success: false, message: '必須パラメータが不足しています' });
+  }
+  try {
+    const result = await sendMission1(studentId, studentName, discordChannelUrl);
+    res.json(result);
+  } catch (error) {
+    console.error('ミッション開始エラー:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// API: ミッション完了チェック更新
+app.post('/api/mission/complete', async (req, res) => {
+  const { studentId, missionNo, completed } = req.body;
+  if (!studentId || !missionNo) {
+    return res.status(400).json({ success: false, message: '必須パラメータが不足しています' });
+  }
+  try {
+    await setMissionCompleted(studentId, parseInt(missionNo), !!completed);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('ミッション完了更新エラー:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// API: ミッション進捗取得（1生徒）
+app.get('/api/mission/progress/:studentId', async (req, res) => {
+  try {
+    const record = await getStudentMission(req.params.studentId);
+    res.json({ success: true, record });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ========================================
 // ヘルスチェック
+// ========================================
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -317,46 +417,51 @@ async function initialize() {
   }
 }
 
-// 定期実行スケジュール設定（毎日17時に実行、日本時間）
+// 定期実行スケジュール設定
 function setupCronJob() {
-  // 環境変数で定期実行を制御（デフォルト: オフ）
   const enableCron = process.env.ENABLE_CRON === 'true';
-  
+
   if (!enableCron) {
     console.log('⏸️  定期実行は無効化されています（環境変数 ENABLE_CRON=true で有効化）\n');
     return;
   }
-  
-  // cron形式: 分 時 日 月 曜日
-  // 日本時間17時 = UTC 8時（JST = UTC+9）
-  const cronExpression = '0 17 * * *';  // 毎日17時（サーバーのタイムゾーン設定が必要）
-  
-  cron.schedule(cronExpression, async () => {
+
+  // 特典自動送信: 毎日17時（JST）
+  cron.schedule('0 17 * * *', async () => {
     if (isProcessing) {
       console.log('⚠️ 前回のバッチ処理がまだ実行中のため、スキップします');
       return;
     }
-    
     try {
       isProcessing = true;
-      console.log(`\n⏰ 定期実行開始: ${formatDateTime(new Date())}`);
-      
+      console.log(`\n⏰ 特典定期実行開始: ${formatDateTime(new Date())}`);
       const result = await processAllBenefits();
-      
       lastRunTime = new Date();
       lastRunResult = result;
       isProcessing = false;
-      
-      console.log(`✅ 定期実行完了: ${formatDateTime(lastRunTime)}\n`);
+      console.log(`✅ 特典定期実行完了: ${formatDateTime(lastRunTime)}\n`);
     } catch (error) {
-      console.error('❌ 定期実行エラー:', error);
+      console.error('❌ 特典定期実行エラー:', error);
       isProcessing = false;
     }
-  }, {
-    timezone: 'Asia/Tokyo'
-  });
-  
-  console.log(`⏰ 定期実行スケジュール設定完了: 毎日17時（日本時間）\n`);
+  }, { timezone: 'Asia/Tokyo' });
+
+  // ミッション自動送信: 毎日15時（JST）
+  cron.schedule('0 15 * * *', async () => {
+    if (!missionEnabled) {
+      console.log('⏸️  ミッション機能がOFFのため自動送信をスキップ');
+      return;
+    }
+    try {
+      console.log(`\n🎯 ミッション定期実行開始: ${formatDateTime(new Date())}`);
+      await processMissionAutoSend();
+      console.log(`✅ ミッション定期実行完了: ${formatDateTime(new Date())}\n`);
+    } catch (error) {
+      console.error('❌ ミッション定期実行エラー:', error);
+    }
+  }, { timezone: 'Asia/Tokyo' });
+
+  console.log('⏰ 定期実行スケジュール設定完了: 特典=毎日17時 / ミッション=毎日15時（日本時間）\n');
 }
 
 // サーバー起動

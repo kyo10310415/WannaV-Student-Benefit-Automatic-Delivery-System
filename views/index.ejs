@@ -245,6 +245,31 @@
       color: #0c5460;
     }
     
+    .badge-pending {
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffc107;
+    }
+    
+    .row-pending {
+      background: #fffbf0 !important;
+    }
+    
+    .row-pending:hover {
+      background: #fff3cd !important;
+    }
+    
+    .pending-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .pending-since {
+      font-size: 11px;
+      color: #856404;
+    }
+    
     .processing {
       color: #ff6b6b;
       font-weight: bold;
@@ -271,9 +296,12 @@
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <h1>🎓 WannaV 生徒様特典自動送付システム</h1>
-      <p>生徒様のランク達成に応じて自動的に特典メッセージをDiscordに送信します</p>
+    <div class="header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+      <div>
+        <h1>🎓 WannaV 生徒様特典自動送付システム</h1>
+        <p>生徒様のランク達成に応じて自動的に特典メッセージをDiscordに送信します</p>
+      </div>
+      <a href="/mission" style="display:inline-block;padding:10px 20px;background:#667eea;color:white;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;transition:background .2s;" onmouseover="this.style.background='#5568d3'" onmouseout="this.style.background='#667eea'">🎯 ミッション管理</a>
     </div>
     
     <div class="status-card">
@@ -360,7 +388,19 @@
     
     <div class="section">
       <h2>📊 生徒様別送信履歴（最新状態）</h2>
-      
+
+      <%
+        const pendingCount = history ? history.filter(r => r.pending_benefit_rank).length : 0;
+      %>
+      <% if (pendingCount > 0) { %>
+        <div style="margin-bottom: 16px; padding: 12px 16px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 20px;">⚠️</span>
+          <span style="color: #856404; font-weight: 600;">
+            支払い未完了のためペンディング中の生徒が <strong><%= pendingCount %>名</strong> います。支払い確認後、次回バッチ実行時に自動送信されます。
+          </span>
+        </div>
+      <% } %>
+
       <% if (history && history.length > 0) { %>
         <table>
           <thead>
@@ -370,11 +410,12 @@
               <th>プラン</th>
               <th>最後に送信した特典</th>
               <th>送信日時</th>
+              <th>支払いペンディング</th>
             </tr>
           </thead>
           <tbody>
             <% history.forEach(record => { %>
-              <tr>
+              <tr class="<%= record.pending_benefit_rank ? 'row-pending' : '' %>">
                 <td><%= record.student_name %></td>
                 <td><%= record.student_id %></td>
                 <td>
@@ -385,6 +426,18 @@
                 <td><%= record.last_benefit_rank || '-' %></td>
                 <td class="timestamp">
                   <%= record.last_sent_at ? formatDateTime(new Date(record.last_sent_at)) : '-' %>
+                </td>
+                <td>
+                  <% if (record.pending_benefit_rank) { %>
+                    <div class="pending-info">
+                      <span class="badge badge-pending">⏳ <%= record.pending_benefit_rank %></span>
+                      <% if (record.pending_since) { %>
+                        <span class="pending-since">スキップ日時: <%= formatDateTime(new Date(record.pending_since)) %></span>
+                      <% } %>
+                    </div>
+                  <% } else { %>
+                    <span style="color: #999;">-</span>
+                  <% } %>
                 </td>
               </tr>
             <% }) %>
