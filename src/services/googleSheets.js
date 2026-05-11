@@ -233,6 +233,52 @@ async function getPaymentStatus() {
   }
 }
 
+// ❹オンボーディングシートからミッション用生徒一覧を取得
+// A列: 学籍番号, B列: 氏名
+// ❶RAW_生徒様情報シートのM列(DiscordチャンネルURL)と突合して返す
+async function getMissionStudentList() {
+  try {
+    // ❹オンボーディングシート A列(学籍番号)・B列(氏名) を取得（4行目以降）
+    const onboardingData = await getSheetData(STUDENT_INFO_SPREADSHEET_ID, '❹オンボーディングシート!A4:B');
+
+    // ❶RAW_生徒様情報シートから学籍番号(B列)・DiscordチャンネルURL(M列) を取得
+    const studentInfoData = await getSheetData(STUDENT_INFO_SPREADSHEET_ID, '❶RAW_生徒様情報!A2:M');
+
+    // 学籍番号 → DiscordチャンネルURL のマップを作成
+    const channelUrlMap = {};
+    for (const row of studentInfoData) {
+      const studentId = (row[1] || '').trim(); // B列: 学籍番号
+      const channelUrl = row[12] || '';        // M列: DiscordチャンネルURL
+      if (studentId) {
+        channelUrlMap[studentId] = channelUrl;
+      }
+    }
+
+    // オンボーディングシートの生徒一覧を作成（B列: 氏名 の降順）
+    const students = [];
+    for (const row of onboardingData) {
+      const studentId = (row[0] || '').trim(); // A列: 学籍番号
+      const studentName = (row[1] || '').trim(); // B列: 氏名
+      if (studentId && studentName) {
+        students.push({
+          studentId,
+          studentName,
+          discordChannelUrl: channelUrlMap[studentId] || ''
+        });
+      }
+    }
+
+    // 氏名の降順（Z→A）でソート
+    students.sort((a, b) => b.studentName.localeCompare(a.studentName, 'ja'));
+
+    console.log(`✅ ミッション用生徒一覧取得: ${students.length}名`);
+    return students;
+  } catch (error) {
+    console.error('❌ ミッション用生徒一覧取得エラー:', error);
+    return [];
+  }
+}
+
 module.exports = {
   initializeGoogleSheets,
   getStudentInfo,
@@ -240,6 +286,7 @@ module.exports = {
   getTenDayAchievementDates,
   getMessageForBenefit,
   getPaymentStatus,
+  getMissionStudentList,
   STUDENT_INFO_SPREADSHEET_ID,
   BENEFIT_MESSAGE_SPREADSHEET_ID
 };

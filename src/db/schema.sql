@@ -58,3 +58,43 @@ COMMENT ON COLUMN benefit_history.pending_benefit_rank IS '支払い未完了で
 COMMENT ON COLUMN benefit_history.pending_since IS 'スキップした日時';
 COMMENT ON COLUMN benefit_images.benefit_rank IS '特典ランク（10日達成、ビギナーⅠ等）';
 COMMENT ON COLUMN benefit_images.image_data IS '画像データ（BYTEA形式）';
+
+-- ミッションメッセージ管理テーブル（ミッション1〜3のメッセージ本文を保存）
+CREATE TABLE IF NOT EXISTS mission_messages (
+  id SERIAL PRIMARY KEY,
+  mission_no INTEGER NOT NULL UNIQUE CHECK (mission_no IN (1, 2, 3)),
+  message_content TEXT NOT NULL DEFAULT '',
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+-- 初期データ（存在しない場合のみ挿入）
+INSERT INTO mission_messages (mission_no, message_content)
+  VALUES (1, ''), (2, ''), (3, '')
+  ON CONFLICT (mission_no) DO NOTHING;
+
+-- 生徒ミッション進捗テーブル（生徒×ミッション1レコード）
+CREATE TABLE IF NOT EXISTS student_missions (
+  id SERIAL PRIMARY KEY,
+  student_id VARCHAR(50) NOT NULL UNIQUE,
+  student_name VARCHAR(255) NOT NULL,
+  discord_channel_url TEXT,
+  -- ミッション1
+  mission1_sent_at TIMESTAMP,
+  mission1_completed BOOLEAN DEFAULT FALSE,
+  mission1_completed_at TIMESTAMP,
+  -- ミッション2
+  mission2_sent_at TIMESTAMP,
+  mission2_completed BOOLEAN DEFAULT FALSE,
+  mission2_completed_at TIMESTAMP,
+  -- ミッション3
+  mission3_sent_at TIMESTAMP,
+  mission3_completed BOOLEAN DEFAULT FALSE,
+  mission3_completed_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- インデックス
+CREATE INDEX IF NOT EXISTS idx_student_missions_student_id ON student_missions(student_id);
+
+COMMENT ON TABLE mission_messages IS 'ミッション1〜3のDiscord送信メッセージを管理するテーブル';
+COMMENT ON TABLE student_missions IS '生徒ごとのミッション進捗を管理するテーブル（1生徒1レコード）';

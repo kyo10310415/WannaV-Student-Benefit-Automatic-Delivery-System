@@ -206,6 +206,151 @@ async function deleteBenefitImage(benefitRank) {
   }
 }
 
+// ========================================
+// ミッション関連
+// ========================================
+
+// ミッションメッセージを全件取得
+async function getAllMissionMessages() {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      'SELECT * FROM mission_messages ORDER BY mission_no'
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+// ミッションメッセージを更新
+async function updateMissionMessage(missionNo, messageContent) {
+  const client = await pool.connect();
+  try {
+    await client.query(
+      `UPDATE mission_messages SET message_content = $1, updated_at = CURRENT_TIMESTAMP WHERE mission_no = $2`,
+      [messageContent, missionNo]
+    );
+  } finally {
+    client.release();
+  }
+}
+
+// 全生徒のミッション進捗を取得（管理画面用）
+async function getAllStudentMissions() {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      'SELECT * FROM student_missions ORDER BY created_at DESC'
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+// 生徒のミッション進捗を取得（なければnull）
+async function getStudentMission(studentId) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      'SELECT * FROM student_missions WHERE student_id = $1',
+      [studentId]
+    );
+    return result.rows.length > 0 ? result.rows[0] : null;
+  } finally {
+    client.release();
+  }
+}
+
+// ミッション開始（ミッション1送付日を記録）
+async function startMission(studentId, studentName, discordChannelUrl) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `INSERT INTO student_missions (student_id, student_name, discord_channel_url, mission1_sent_at, updated_at)
+       VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+       ON CONFLICT (student_id) DO UPDATE SET
+         student_name = EXCLUDED.student_name,
+         discord_channel_url = EXCLUDED.discord_channel_url,
+         mission1_sent_at = CURRENT_TIMESTAMP,
+         mission1_completed = FALSE,
+         mission1_completed_at = NULL,
+         mission2_sent_at = NULL,
+         mission2_completed = FALSE,
+         mission2_completed_at = NULL,
+         mission3_sent_at = NULL,
+         mission3_completed = FALSE,
+         mission3_completed_at = NULL,
+         updated_at = CURRENT_TIMESTAMP
+       RETURNING *`,
+      [studentId, studentName, discordChannelUrl]
+    );
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
+// ミッション完了チェック更新
+async function setMissionCompleted(studentId, missionNo, completed) {
+  const client = await pool.connect();
+  try {
+    const completedAtSql = completed
+      ? `mission${missionNo}_completed_at = CURRENT_TIMESTAMP`
+      : `mission${missionNo}_completed_at = NULL`;
+    await client.query(
+      `UPDATE student_missions
+       SET mission${missionNo}_completed = $1,
+           ${completedAtSql},
+           updated_at = CURRENT_TIMESTAMP
+       WHERE student_id = $2`,
+      [completed, studentId]
+    );
+  } finally {
+    client.release();
+  }
+}
+
+// ミッション送付日を記録（ミッション2 or 3）
+async function setMissionSentAt(studentId, missionNo) {
+  const client = await pool.connect();
+  try {
+    await client.query(
+      `UPDATE student_missions
+       SET mission${missionNo}_sent_at = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE student_id = $1`,
+      [studentId]
+    );
+  } finally {
+    client.release();
+  }
+}
+
+// ミッション2/3の自動送信対象を取得
+// 「前ミッション完了済み」かつ「完了日の翌日15時以降」かつ「次ミッション未送信」の生徒
+async function getMissionAutoSendTargets(missionNo) {
+  const client = await pool.connect();
+  try {
+    const prevNo = missionNo - 1;
+    // 前ミッション完了日の翌日15時（JST = UTC+9 → 翌日06:00 UTC）以降かつ次ミッション未送信
+    const result = await client.query(
+      `SELECT * FROM student_missions
+       WHERE mission${prevNo}_completed = TRUE
+         AND mission${prevNo}_completed_at IS NOT NULL
+         AND mission${missionNo}_sent_at IS NULL
+         AND (mission${prevNo}_completed_at AT TIME ZONE 'Asia/Tokyo' + INTERVAL '1 day')::DATE
+             <= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Tokyo')::DATE`
+      ,
+      []
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   pool,
   initializeDatabase,
@@ -218,5 +363,14 @@ module.exports = {
   saveBenefitImage,
   getBenefitImage,
   getAllBenefitImages,
-  deleteBenefitImage
+  deleteBenefitImage,
+  // ミッション関連
+  getAllMissionMessages,
+  updateMissionMessage,
+  getAllStudentMissions,
+  getStudentMission,
+  startMission,
+  setMissionCompleted,
+  setMissionSentAt,
+  getMissionAutoSendTargets
 };
