@@ -9,6 +9,24 @@ const {
 } = require('../db/database');
 
 /**
+ * 送信日の翌日を「◯月◯日」形式で返す（JST基準）
+ */
+function getTomorrowLabel(baseDate) {
+  const tomorrow = new Date(baseDate.getTime() + 24 * 60 * 60 * 1000);
+  // JSTに変換
+  const jst = new Date(tomorrow.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+  return `${jst.getMonth() + 1}月${jst.getDate()}日`;
+}
+
+/**
+ * メッセージ中の「◯月◯日」を送信翌日の日付に置換
+ */
+function replaceDatePlaceholder(message, sendDate) {
+  const label = getTomorrowLabel(sendDate);
+  return message.replace(/◯月◯日/g, label);
+}
+
+/**
  * ミッション1を送信（ミッション開始ボタン押下時）
  */
 async function sendMission1(studentId, studentName, discordChannelUrl) {
@@ -20,15 +38,19 @@ async function sendMission1(studentId, studentName, discordChannelUrl) {
       return { success: false, error: 'ミッション1のメッセージが未設定です' };
     }
 
+    // 送信日の翌日に日付を置換
+    const sendDate = new Date();
+    const content = replaceDatePlaceholder(msg.message_content, sendDate);
+
     // Discord送信
-    const result = await sendDiscordMessage(discordChannelUrl, msg.message_content);
+    const result = await sendDiscordMessage(discordChannelUrl, content);
     if (!result.success) {
       return { success: false, error: result.error };
     }
 
     // DB記録（ミッション開始 + mission1_sent_at を記録）
     await startMission(studentId, studentName, discordChannelUrl);
-    console.log(`✅ ミッション1送信完了: ${studentName}`);
+    console.log(`✅ ミッション1送信完了: ${studentName}（翌日: ${getTomorrowLabel(sendDate)}）`);
     return { success: true };
   } catch (error) {
     console.error(`❌ ミッション1送信エラー (${studentName}):`, error.message);
@@ -47,14 +69,18 @@ async function sendMissionN(missionNo, studentId, studentName, discordChannelUrl
       return { success: false, error: `ミッション${missionNo}のメッセージが未設定です` };
     }
 
-    const result = await sendDiscordMessage(discordChannelUrl, msg.message_content);
+    // 送信日の翌日に日付を置換
+    const sendDate = new Date();
+    const content = replaceDatePlaceholder(msg.message_content, sendDate);
+
+    const result = await sendDiscordMessage(discordChannelUrl, content);
     if (!result.success) {
       return { success: false, error: result.error };
     }
 
     // 送付日を記録
     await setMissionSentAt(studentId, missionNo);
-    console.log(`✅ ミッション${missionNo}送信完了: ${studentName}`);
+    console.log(`✅ ミッション${missionNo}送信完了: ${studentName}（翌日: ${getTomorrowLabel(sendDate)}）`);
     return { success: true };
   } catch (error) {
     console.error(`❌ ミッション${missionNo}送信エラー (${studentName}):`, error.message);
@@ -104,3 +130,4 @@ module.exports = {
   sendMissionN,
   processMissionAutoSend
 };
+
