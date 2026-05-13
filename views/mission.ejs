@@ -213,6 +213,72 @@
 
     .empty-state { text-align: center; padding: 50px 20px; color: #999; font-size: 15px; }
 
+    /* 検索バー */
+    .search-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    .search-input-wrap {
+      position: relative;
+      flex: 1;
+      min-width: 200px;
+      max-width: 360px;
+    }
+    .search-input-wrap .search-icon {
+      position: absolute;
+      left: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #aaa;
+      font-size: 15px;
+      pointer-events: none;
+    }
+    .search-input {
+      width: 100%;
+      padding: 9px 12px 9px 34px;
+      border: 1px solid #ced4da;
+      border-radius: 7px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .search-input:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102,126,234,.15);
+    }
+    .search-clear {
+      position: absolute;
+      right: 9px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #aaa;
+      font-size: 16px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0 2px;
+      display: none;
+    }
+    .search-clear:hover { color: #555; }
+    .search-count {
+      font-size: 13px;
+      color: #888;
+      white-space: nowrap;
+    }
+    .search-count strong { color: #667eea; }
+    tr.hidden-row { display: none; }
+    /* ヒット文字強調 */
+    mark {
+      background: #fff176;
+      color: inherit;
+      border-radius: 2px;
+      padding: 0 1px;
+    }
+
     /* テスト送信 */
     .test-send-card {
       background: #fffdf0;
@@ -379,6 +445,18 @@
   <div class="section">
     <h2>📋 生徒別ミッション進捗</h2>
     <% if (sheetStudents && sheetStudents.length > 0) { %>
+      <!-- 検索バー -->
+      <div class="search-bar-wrap">
+        <div class="search-input-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="studentSearch" class="search-input"
+            placeholder="氏名・学籍番号で検索..."
+            oninput="filterStudents(this.value)"
+            autocomplete="off">
+          <button class="search-clear" id="searchClear" onclick="clearSearch()">✕</button>
+        </div>
+        <div class="search-count" id="searchCount"></div>
+      </div>
       <div class="table-wrap">
         <table>
           <thead>
@@ -395,9 +473,11 @@
             <% sheetStudents.forEach(student => {
               const m = missionMap[student.studentId];
             %>
-            <tr id="row-<%= student.studentId %>">
-              <td><strong><%= student.studentName %></strong></td>
-              <td style="color:#888;"><%= student.studentId %></td>
+            <tr id="row-<%= student.studentId %>"
+              data-name="<%= student.studentName %>"
+              data-sid="<%= student.studentId %>">
+              <td><strong class="cell-name"><%= student.studentName %></strong></td>
+              <td style="color:#888;"><span class="cell-sid"><%= student.studentId %></span></td>
 
               <!-- ミッション1 -->
               <td>
@@ -539,6 +619,62 @@
     } finally {
       btns.forEach(b => b.disabled = false);
     }
+  }
+
+  // ========================================
+  // 生徒検索フィルター
+  // ========================================
+  const totalRows = document.querySelectorAll('tbody tr[data-name]').length;
+
+  function filterStudents(q) {
+    const keyword = q.trim().toLowerCase();
+    const clearBtn = document.getElementById('searchClear');
+    const countEl  = document.getElementById('searchCount');
+
+    clearBtn.style.display = keyword ? 'block' : 'none';
+
+    let visible = 0;
+    document.querySelectorAll('tbody tr[data-name]').forEach(row => {
+      const name = row.dataset.name.toLowerCase();
+      const sid  = row.dataset.sid.toLowerCase();
+      const hit  = !keyword || name.includes(keyword) || sid.includes(keyword);
+      row.classList.toggle('hidden-row', !hit);
+      if (hit) {
+        visible++;
+        // ヒット箇所をハイライト
+        highlightCell(row.querySelector('.cell-name'), row.dataset.name, keyword);
+        highlightCell(row.querySelector('.cell-sid'),  row.dataset.sid,  keyword);
+      } else {
+        // ハイライトをリセット
+        resetCell(row.querySelector('.cell-name'), row.dataset.name);
+        resetCell(row.querySelector('.cell-sid'),  row.dataset.sid);
+      }
+    });
+
+    if (keyword) {
+      countEl.innerHTML = `<strong>${visible}</strong> / ${totalRows} 件`;
+    } else {
+      countEl.textContent = '';
+    }
+  }
+
+  function highlightCell(el, original, keyword) {
+    if (!el || !keyword) return;
+    const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(${escaped})`, 'gi');
+    el.innerHTML = original.replace(re, '<mark>$1</mark>');
+  }
+
+  function resetCell(el, original) {
+    if (!el) return;
+    el.textContent = original;
+  }
+
+  function clearSearch() {
+    const input = document.getElementById('studentSearch');
+    input.value = '';
+    filterStudents('');
+    input.focus();
   }
 
   // ========================================
