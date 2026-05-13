@@ -5,7 +5,10 @@ const {
   startMission,
   setMissionCompleted,
   setMissionSentAt,
-  getMissionAutoSendTargets
+  getMissionAutoSendTargets,
+  getAllReminderMessages,
+  setMissionRemindedAt,
+  getReminderTargets
 } = require('../db/database');
 
 /**
@@ -125,10 +128,63 @@ async function processMissionAutoSend() {
   return { sent, failed };
 }
 
+/**
+ * 毎日15時（JST）に実行するリマインド自動送信バッチ
+ * - ミッション送付日から3日経過しても完了チェックがない生徒にリマインドを送信
+ * - ミッション1〜3それぞれ対象
+ * - リマインドは1回のみ（reminded_at が NULL の場合のみ送信）
+ */
+async function processReminderAutoSend() {
+  console.log('\n🔔 リマインド自動送信バッチ開始');
+  let sent = 0;
+  let failed = 0;
+
+  // リマインドメッセージを一括取得
+  const reminderMessages = await getAllReminderMessages();
+
+  for (const missionNo of [1, 2, 3]) {
+    const msg = reminderMessages.find(m => m.mission_no === missionNo);
+    if (!msg || !msg.message_content.trim()) {
+      console.log(`  ミッション${missionNo}リマインド: メッセージ未設定のためスキップ`);
+      continue;
+    }
+
+    const targets = await getReminderTargets(missionNo);
+    console.log(`  ミッション${missionNo}リマインド: 対象 ${targets.length}名`);
+
+    for (const record of targets) {
+      try {
+        // ◯月◯日 置換（リマインドは翌日置換を適用）
+        const sendDate = new Date();
+        const content = replaceDatePlaceholder(msg.message_content, sendDate);
+
+        const result = await sendDiscordMessage(record.discord_channel_url, content);
+        if (result.success) {
+          await setMissionRemindedAt(record.student_id, missionNo);
+          sent++;
+          console.log(`  ✅ リマインド送信完了: ${record.student_name} ミッション${missionNo}`);
+        } else {
+          failed++;
+          console.error(`  ❌ リマインド送信失敗: ${record.student_name} ミッション${missionNo}: ${result.error}`);
+        }
+      } catch (error) {
+        failed++;
+        console.error(`  ❌ リマインド送信エラー: ${record.student_name} ミッション${missionNo}:`, error.message);
+      }
+      // 連続送信の負荷軽減
+      await new Promise(r => setTimeout(r, 500));
+    }
+  }
+
+  console.log(`🔔 リマインド自動送信完了: 成功 ${sent}件 / 失敗 ${failed}件\n`);
+  return { sent, failed };
+}
+
 module.exports = {
   sendMission1,
   sendMissionN,
   processMissionAutoSend,
+  processReminderAutoSend,
   replaceDatePlaceholder,
   getTomorrowLabel
 };

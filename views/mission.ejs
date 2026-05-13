@@ -104,6 +104,7 @@
       padding-bottom: 10px;
       border-bottom: 2px solid #667eea;
     }
+    .section h2.reminder-h2 { border-bottom-color: #7c5cbf; }
 
     /* メッセージエディタ */
     .msg-grid {
@@ -117,7 +118,9 @@
       padding: 18px;
       background: #fafafa;
     }
+    .msg-card.reminder-card { border-color: #e2d9f3; background: #faf8ff; }
     .msg-card h3 { font-size: 15px; font-weight: 700; color: #495057; margin-bottom: 10px; }
+    .msg-card h3.reminder-title { color: #5a3d8a; }
     .msg-card textarea {
       width: 100%;
       min-height: 160px;
@@ -130,6 +133,7 @@
       line-height: 1.6;
     }
     .msg-card textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,.15); }
+    .msg-card.reminder-card textarea:focus { border-color: #7c5cbf; box-shadow: 0 0 0 3px rgba(124,92,191,.15); }
     .msg-hint { font-size: 11px; color: #888; margin-top: 6px; }
     .msg-save-btn {
       margin-top: 10px;
@@ -143,10 +147,12 @@
       transition: background .2s;
     }
     .msg-save-btn:hover { background: #5568d3; }
+    .msg-save-btn.reminder-btn { background: #7c5cbf; }
+    .msg-save-btn.reminder-btn:hover { background: #6a4dab; }
 
     /* 生徒テーブル */
     .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 900px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 960px; }
     th {
       background: #667eea;
       color: white;
@@ -159,7 +165,7 @@
     tr:hover td { background: #f8f9ff; }
 
     /* ミッションセル */
-    .mission-cell { display: flex; flex-direction: column; gap: 5px; min-width: 130px; }
+    .mission-cell { display: flex; flex-direction: column; gap: 5px; min-width: 140px; }
     .mission-date { font-size: 12px; color: #555; }
     .mission-date.not-sent { color: #bbb; font-style: italic; }
 
@@ -202,7 +208,7 @@
     /* バッジ */
     .badge {
       display: inline-block;
-      padding: 3px 10px;
+      padding: 3px 8px;
       border-radius: 10px;
       font-size: 11px;
       font-weight: 600;
@@ -210,8 +216,24 @@
     .badge-done     { background: #d4edda; color: #155724; }
     .badge-progress { background: #fff3cd; color: #856404; }
     .badge-none     { background: #f0f0f0; color: #999; }
+    .badge-reminded { background: #e2d9f3; color: #5a3d8a; }
 
-    .empty-state { text-align: center; padding: 50px 20px; color: #999; font-size: 15px; }
+    /* リマインドヒント */
+    .reminder-hint { font-size: 11px; color: #e07b00; margin-top: 3px; font-style: italic; }
+
+    /* Discord リンクアイコン */
+    .discord-link {
+      display: inline-flex;
+      align-items: center;
+      margin-left: 6px;
+      color: #5865f2;
+      text-decoration: none;
+      opacity: .7;
+      transition: opacity .2s;
+      vertical-align: middle;
+    }
+    .discord-link:hover { opacity: 1; }
+    .discord-link svg { width: 14px; height: 14px; }
 
     /* 検索バー */
     .search-bar-wrap {
@@ -264,20 +286,12 @@
       display: none;
     }
     .search-clear:hover { color: #555; }
-    .search-count {
-      font-size: 13px;
-      color: #888;
-      white-space: nowrap;
-    }
+    .search-count { font-size: 13px; color: #888; white-space: nowrap; }
     .search-count strong { color: #667eea; }
     tr.hidden-row { display: none; }
-    /* ヒット文字強調 */
-    mark {
-      background: #fff176;
-      color: inherit;
-      border-radius: 2px;
-      padding: 0 1px;
-    }
+    mark { background: #fff176; color: inherit; border-radius: 2px; padding: 0 1px; }
+
+    .empty-state { text-align: center; padding: 50px 20px; color: #999; font-size: 15px; }
 
     /* テスト送信 */
     .test-send-card {
@@ -291,8 +305,6 @@
       font-size: 17px;
       color: #856404;
       margin-bottom: 6px;
-      padding-bottom: 0;
-      border-bottom: none;
     }
     .test-send-desc {
       font-size: 12px;
@@ -312,11 +324,7 @@
       gap: 12px;
       flex-wrap: wrap;
     }
-    .test-mission-btns {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
+    .test-mission-btns { display: flex; gap: 10px; flex-wrap: wrap; }
     .btn-test {
       padding: 9px 22px;
       border: none;
@@ -385,7 +393,7 @@
   <div class="toggle-card">
     <div>
       <div class="toggle-label">🔄 ミッション自動送信機能</div>
-      <div class="toggle-desc">OFFにすると翌日15時の自動送信を停止します（ミッション開始ボタンは引き続き使用可）</div>
+      <div class="toggle-desc">OFFにすると翌日15時の自動送信・リマインド送信を停止します（ミッション開始ボタンは引き続き使用可）</div>
     </div>
     <label class="switch">
       <input type="checkbox" id="missionToggle" <%= missionEnabled ? 'checked' : '' %> onchange="toggleMission()">
@@ -416,7 +424,7 @@
     </div>
   </div>
 
-  <!-- メッセージ編集 -->
+  <!-- ミッションメッセージ編集 -->
   <div class="section">
     <h2>✏️ ミッションメッセージ編集</h2>
     <p style="font-size:13px;color:#666;margin-bottom:16px;">
@@ -436,6 +444,28 @@
             <% } else { %>📌 ミッション<%= no-1 %>完了チェックの翌日15時に自動送信されます<% } %>
           </div>
           <button class="msg-save-btn" onclick="saveMessage(<%= no %>)">💾 保存</button>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+
+  <!-- リマインドメッセージ編集 -->
+  <div class="section">
+    <h2 class="reminder-h2">🔔 リマインドメッセージ編集</h2>
+    <p style="font-size:13px;color:#666;margin-bottom:16px;">
+      ミッション送付日から <strong>3日後</strong> までに完了チェックが入らなかった場合、毎日15時30分に <strong>1回だけ</strong> 自動送信されます。<br>
+      空欄のミッションはリマインドをスキップします。<code>◯月◯日</code> の自動置換も同様に動作します。
+    </p>
+    <div class="msg-grid">
+      <% [1, 2, 3].forEach(no => {
+        const rmsg = reminderMessages.find(m => m.mission_no === no);
+        const rcontent = rmsg ? rmsg.message_content : '';
+      %>
+        <div class="msg-card reminder-card">
+          <h3 class="reminder-title">🔔 ミッション <%= no %> のリマインド</h3>
+          <textarea id="reminder<%= no %>" placeholder="ミッション <%= no %> 完了チェック促進メッセージ（空欄でスキップ）..."><%= rcontent %></textarea>
+          <div class="msg-hint">📌 送付日3日後まで未完了の場合に1回だけ送信されます</div>
+          <button class="msg-save-btn reminder-btn" onclick="saveReminderMessage(<%= no %>)">💾 保存</button>
         </div>
       <% }) %>
     </div>
@@ -463,9 +493,9 @@
             <tr>
               <th>氏名</th>
               <th>学籍番号</th>
-              <th>ミッション1<br><span style="font-weight:400;font-size:11px;">送付日 / 完了</span></th>
-              <th>ミッション2<br><span style="font-weight:400;font-size:11px;">送付日 / 完了</span></th>
-              <th>ミッション3<br><span style="font-weight:400;font-size:11px;">送付日 / 完了</span></th>
+              <th>ミッション1<br><span style="font-weight:400;font-size:11px;">送付日 / 完了 / リマインド</span></th>
+              <th>ミッション2<br><span style="font-weight:400;font-size:11px;">送付日 / 完了 / リマインド</span></th>
+              <th>ミッション3<br><span style="font-weight:400;font-size:11px;">送付日 / 完了 / リマインド</span></th>
               <th>操作</th>
             </tr>
           </thead>
@@ -476,74 +506,68 @@
             <tr id="row-<%= student.studentId %>"
               data-name="<%= student.studentName %>"
               data-sid="<%= student.studentId %>">
-              <td><strong class="cell-name"><%= student.studentName %></strong></td>
+
+              <!-- 氏名 + Discordリンク -->
+              <td>
+                <strong class="cell-name"><%= student.studentName %></strong>
+                <% if (student.discordChannelUrl) { %>
+                  <a href="<%= student.discordChannelUrl %>" target="_blank" rel="noopener"
+                    class="discord-link" title="Discordチャンネルを開く">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.043.031.056a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+                    </svg>
+                  </a>
+                <% } %>
+              </td>
+
+              <!-- 学籍番号 -->
               <td style="color:#888;"><span class="cell-sid"><%= student.studentId %></span></td>
 
-              <!-- ミッション1 -->
+              <!-- ミッション1〜3 ループ -->
+              <% [1, 2, 3].forEach(function(no) {
+                const sentKey      = 'mission' + no + '_sent_at';
+                const completedKey = 'mission' + no + '_completed';
+                const remindedKey  = 'mission' + no + '_reminded_at';
+                const prevCompKey  = 'mission' + (no - 1) + '_completed';
+                const isSent      = m && m[sentKey];
+                const isCompleted = m && m[completedKey];
+                const isReminded  = m && m[remindedKey];
+                const prevDone    = no === 1 ? true : (m && m[prevCompKey]);
+              %>
               <td>
                 <div class="mission-cell">
-                  <span class="mission-date <%= m && m.mission1_sent_at ? '' : 'not-sent' %>">
-                    <%= m && m.mission1_sent_at
-                      ? formatDateTime(new Date(m.mission1_sent_at)).substring(0, 7)
-                      : '未送信' %>
+                  <!-- 送付日 or ステータス -->
+                  <span class="mission-date <%= isSent ? '' : 'not-sent' %>">
+                    <% if (isSent) { %>
+                      <%= formatDateTime(new Date(m[sentKey])).substring(0, 7) %>
+                    <% } else if (no > 1 && prevDone) { %>
+                      ⏳ 翌日15時送信予定
+                    <% } else { %>
+                      未送信
+                    <% } %>
                   </span>
-                  <% if (m && m.mission1_sent_at) { %>
-                    <div class="check-wrap">
-                      <input type="checkbox" class="mission-check"
-                        id="chk1-<%= student.studentId %>"
-                        <%= m.mission1_completed ? 'checked' : '' %>
-                        onchange="updateComplete('<%= student.studentId %>', 1, this.checked)">
-                      <label class="check-label" for="chk1-<%= student.studentId %>">完了</label>
-                    </div>
-                  <% } else { %>
-                    <span style="font-size:11px;color:#ccc;">-</span>
-                  <% } %>
-                </div>
-              </td>
 
-              <!-- ミッション2 -->
-              <td>
-                <div class="mission-cell">
-                  <span class="mission-date <%= m && m.mission2_sent_at ? '' : 'not-sent' %>">
-                    <%= m && m.mission2_sent_at
-                      ? formatDateTime(new Date(m.mission2_sent_at)).substring(0, 7)
-                      : (m && m.mission1_completed ? '⏳ 翌日15時送信予定' : '未送信') %>
-                  </span>
-                  <% if (m && m.mission2_sent_at) { %>
+                  <% if (isSent) { %>
+                    <!-- 完了チェック -->
                     <div class="check-wrap">
                       <input type="checkbox" class="mission-check"
-                        id="chk2-<%= student.studentId %>"
-                        <%= m.mission2_completed ? 'checked' : '' %>
-                        onchange="updateComplete('<%= student.studentId %>', 2, this.checked)">
-                      <label class="check-label" for="chk2-<%= student.studentId %>">完了</label>
+                        id="chk<%= no %>-<%= student.studentId %>"
+                        <%= isCompleted ? 'checked' : '' %>
+                        onchange="updateComplete('<%= student.studentId %>', <%= no %>, this.checked)">
+                      <label class="check-label" for="chk<%= no %>-<%= student.studentId %>">完了</label>
                     </div>
+                    <!-- リマインド状態 -->
+                    <% if (isReminded) { %>
+                      <span class="badge badge-reminded">🔔 リマインド済</span>
+                    <% } else if (!isCompleted) { %>
+                      <span class="reminder-hint">⏰ 3日後未完了でリマインド</span>
+                    <% } %>
                   <% } else { %>
                     <span style="font-size:11px;color:#ccc;">-</span>
                   <% } %>
                 </div>
               </td>
-
-              <!-- ミッション3 -->
-              <td>
-                <div class="mission-cell">
-                  <span class="mission-date <%= m && m.mission3_sent_at ? '' : 'not-sent' %>">
-                    <%= m && m.mission3_sent_at
-                      ? formatDateTime(new Date(m.mission3_sent_at)).substring(0, 7)
-                      : (m && m.mission2_completed ? '⏳ 翌日15時送信予定' : '未送信') %>
-                  </span>
-                  <% if (m && m.mission3_sent_at) { %>
-                    <div class="check-wrap">
-                      <input type="checkbox" class="mission-check"
-                        id="chk3-<%= student.studentId %>"
-                        <%= m.mission3_completed ? 'checked' : '' %>
-                        onchange="updateComplete('<%= student.studentId %>', 3, this.checked)">
-                      <label class="check-label" for="chk3-<%= student.studentId %>">完了</label>
-                    </div>
-                  <% } else { %>
-                    <span style="font-size:11px;color:#ccc;">-</span>
-                  <% } %>
-                </div>
-              </td>
+              <% }); %>
 
               <!-- 操作 -->
               <td>
@@ -630,9 +654,7 @@
     const keyword = q.trim().toLowerCase();
     const clearBtn = document.getElementById('searchClear');
     const countEl  = document.getElementById('searchCount');
-
     clearBtn.style.display = keyword ? 'block' : 'none';
-
     let visible = 0;
     document.querySelectorAll('tbody tr[data-name]').forEach(row => {
       const name = row.dataset.name.toLowerCase();
@@ -641,33 +663,24 @@
       row.classList.toggle('hidden-row', !hit);
       if (hit) {
         visible++;
-        // ヒット箇所をハイライト
         highlightCell(row.querySelector('.cell-name'), row.dataset.name, keyword);
         highlightCell(row.querySelector('.cell-sid'),  row.dataset.sid,  keyword);
       } else {
-        // ハイライトをリセット
         resetCell(row.querySelector('.cell-name'), row.dataset.name);
         resetCell(row.querySelector('.cell-sid'),  row.dataset.sid);
       }
     });
-
-    if (keyword) {
-      countEl.innerHTML = `<strong>${visible}</strong> / ${totalRows} 件`;
-    } else {
-      countEl.textContent = '';
-    }
+    countEl.innerHTML = keyword ? `<strong>${visible}</strong> / ${totalRows} 件` : '';
   }
 
   function highlightCell(el, original, keyword) {
     if (!el || !keyword) return;
     const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const re = new RegExp(`(${escaped})`, 'gi');
-    el.innerHTML = original.replace(re, '<mark>$1</mark>');
+    el.innerHTML = original.replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>');
   }
 
   function resetCell(el, original) {
-    if (!el) return;
-    el.textContent = original;
+    if (el) el.textContent = original;
   }
 
   function clearSearch() {
@@ -700,7 +713,7 @@
   }
 
   // ========================================
-  // メッセージ保存
+  // ミッションメッセージ保存
   // ========================================
   async function saveMessage(no) {
     const content = document.getElementById(`msg${no}`).value;
@@ -713,6 +726,28 @@
       const data = await res.json();
       if (data.success) {
         showToast(`✅ ミッション${no}のメッセージを保存しました`);
+      } else {
+        showToast('保存に失敗しました: ' + data.message, 'error');
+      }
+    } catch(e) {
+      showToast('通信エラーが発生しました', 'error');
+    }
+  }
+
+  // ========================================
+  // リマインドメッセージ保存
+  // ========================================
+  async function saveReminderMessage(no) {
+    const content = document.getElementById(`reminder${no}`).value;
+    try {
+      const res  = await fetch('/api/mission/reminder-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ missionNo: no, messageContent: content })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`✅ ミッション${no}のリマインドメッセージを保存しました`);
       } else {
         showToast('保存に失敗しました: ' + data.message, 'error');
       }
@@ -764,13 +799,10 @@
       });
       const data = await res.json();
       if (data.success) {
-        const action = completed ? '完了' : '未完了';
-        showToast(`✅ ミッション${missionNo}を${action}に更新しました`);
-        // 送信予定テキストを更新するためページリロード
+        showToast(`✅ ミッション${missionNo}を${completed ? '完了' : '未完了'}に更新しました`);
         setTimeout(() => location.reload(), 1200);
       } else {
         showToast('更新失敗: ' + data.message, 'error');
-        // チェックを元に戻す
         document.getElementById(`chk${missionNo}-${studentId}`).checked = !completed;
       }
     } catch(e) {

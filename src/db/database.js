@@ -351,6 +351,72 @@ async function getMissionAutoSendTargets(missionNo) {
   }
 }
 
+// ========================================
+// リマインド関連
+// ========================================
+
+// リマインドメッセージを全件取得
+async function getAllReminderMessages() {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      'SELECT * FROM reminder_messages ORDER BY mission_no'
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+// リマインドメッセージを更新
+async function updateReminderMessage(missionNo, messageContent) {
+  const client = await pool.connect();
+  try {
+    await client.query(
+      `UPDATE reminder_messages SET message_content = $1, updated_at = CURRENT_TIMESTAMP WHERE mission_no = $2`,
+      [messageContent, missionNo]
+    );
+  } finally {
+    client.release();
+  }
+}
+
+// リマインド送信済みを記録
+async function setMissionRemindedAt(studentId, missionNo) {
+  const client = await pool.connect();
+  try {
+    await client.query(
+      `UPDATE student_missions
+       SET mission${missionNo}_reminded_at = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE student_id = $1`,
+      [studentId]
+    );
+  } finally {
+    client.release();
+  }
+}
+
+// リマインド自動送信対象を取得
+// 「ミッション送付済み」かつ「送付日から3日経過」かつ「完了チェックなし」かつ「リマインド未送信」
+async function getReminderTargets(missionNo) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `SELECT * FROM student_missions
+       WHERE mission${missionNo}_sent_at IS NOT NULL
+         AND mission${missionNo}_completed = FALSE
+         AND mission${missionNo}_reminded_at IS NULL
+         AND (mission${missionNo}_sent_at AT TIME ZONE 'Asia/Tokyo' + INTERVAL '3 days')::DATE
+             <= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Tokyo')::DATE`,
+      []
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   pool,
   initializeDatabase,
@@ -372,5 +438,10 @@ module.exports = {
   startMission,
   setMissionCompleted,
   setMissionSentAt,
-  getMissionAutoSendTargets
+  getMissionAutoSendTargets,
+  // リマインド関連
+  getAllReminderMessages,
+  updateReminderMessage,
+  setMissionRemindedAt,
+  getReminderTargets
 };

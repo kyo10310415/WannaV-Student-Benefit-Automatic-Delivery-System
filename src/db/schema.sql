@@ -98,3 +98,25 @@ CREATE INDEX IF NOT EXISTS idx_student_missions_student_id ON student_missions(s
 
 COMMENT ON TABLE mission_messages IS 'ミッション1〜3のDiscord送信メッセージを管理するテーブル';
 COMMENT ON TABLE student_missions IS '生徒ごとのミッション進捗を管理するテーブル（1生徒1レコード）';
+
+-- student_missions にリマインド送信済みカラムを追加（既存テーブルへのALTER）
+ALTER TABLE student_missions ADD COLUMN IF NOT EXISTS mission1_reminded_at TIMESTAMP;
+ALTER TABLE student_missions ADD COLUMN IF NOT EXISTS mission2_reminded_at TIMESTAMP;
+ALTER TABLE student_missions ADD COLUMN IF NOT EXISTS mission3_reminded_at TIMESTAMP;
+
+-- リマインドメッセージ管理テーブル（ミッション1〜3それぞれのリマインド文）
+CREATE TABLE IF NOT EXISTS reminder_messages (
+  id SERIAL PRIMARY KEY,
+  mission_no INTEGER NOT NULL UNIQUE CHECK (mission_no IN (1, 2, 3)),
+  message_content TEXT NOT NULL DEFAULT '',
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+-- 初期データ（存在しない場合のみ挿入）
+INSERT INTO reminder_messages (mission_no, message_content)
+  VALUES (1, ''), (2, ''), (3, '')
+  ON CONFLICT (mission_no) DO NOTHING;
+
+COMMENT ON TABLE reminder_messages IS 'ミッション1〜3のリマインドメッセージを管理するテーブル（送付日3日後まで未完了時に自動送信）';
+COMMENT ON COLUMN student_missions.mission1_reminded_at IS 'ミッション1リマインド送信日時（NULLなら未送信）';
+COMMENT ON COLUMN student_missions.mission2_reminded_at IS 'ミッション2リマインド送信日時（NULLなら未送信）';
+COMMENT ON COLUMN student_missions.mission3_reminded_at IS 'ミッション3リマインド送信日時（NULLなら未送信）';
