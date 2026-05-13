@@ -6,12 +6,13 @@ const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 const { initializeDatabase, getAllBenefitHistory, getSendLogs, saveBenefitImage, getBenefitImage, getAllBenefitImages, deleteBenefitImage,
-  getAllMissionMessages, updateMissionMessage, getAllStudentMissions, getStudentMission, startMission, setMissionCompleted, setMissionSentAt
+  getAllMissionMessages, updateMissionMessage, getAllStudentMissions, getStudentMission, startMission, setMissionCompleted, setMissionSentAt,
+  getAllReminderMessages, updateReminderMessage
 } = require('./db/database');
 const { initializeGoogleSheets, getMessageForBenefit, getMissionStudentList } = require('./services/googleSheets');
 const { initializeDiscordBot, sendDiscordMessage } = require('./services/discord');
 const { processAllBenefits } = require('./services/benefitService');
-const { sendMission1, sendMissionN, processMissionAutoSend, replaceDatePlaceholder, getTomorrowLabel } = require('./services/missionService');
+const { sendMission1, sendMissionN, processMissionAutoSend, processReminderAutoSend, replaceDatePlaceholder, getTomorrowLabel } = require('./services/missionService');
 const { formatDateTime } = require('./utils/dateUtils');
 const ssoAuth = require('../middleware/sso-auth-middleware');
 
@@ -294,8 +295,9 @@ app.delete('/api/image/:benefitRank', async (req, res) => {
 // ========================================
 app.get('/mission', async (req, res) => {
   try {
-    const [messages, sheetStudents, dbMissions] = await Promise.all([
+    const [messages, reminderMessages, sheetStudents, dbMissions] = await Promise.all([
       getAllMissionMessages(),
+      getAllReminderMessages(),
       getMissionStudentList(),
       getAllStudentMissions()
     ]);
@@ -308,6 +310,7 @@ app.get('/mission', async (req, res) => {
 
     res.render('mission', {
       messages,
+      reminderMessages,
       sheetStudents,
       missionMap,
       missionEnabled,
@@ -337,6 +340,21 @@ app.post('/api/mission/message', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('ミッションメッセージ保存エラー:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// API: リマインドメッセージ保存
+app.post('/api/mission/reminder-message', async (req, res) => {
+  const { missionNo, messageContent } = req.body;
+  if (!missionNo || messageContent === undefined) {
+    return res.status(400).json({ success: false, message: 'missionNo と messageContent は必須です' });
+  }
+  try {
+    await updateReminderMessage(parseInt(missionNo), messageContent);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('リマインドメッセージ保存エラー:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -512,7 +530,22 @@ function setupCronJob() {
     }
   }, { timezone: 'Asia/Tokyo' });
 
-  console.log('⏰ 定期実行スケジュール設定完了: 特典=毎日17時 / ミッション=毎日15時（日本時間）\n');
+  // リマインド自動送信: 毎日15時30分（JST）
+  cron.schedule('30 15 * * *', async () => {
+    if (!missionEnabled) {
+      console.log('⏸️  ミッション機能がOFFのためリマインド自動送信をスキップ');
+      return;
+    }
+    try {
+      console.log(`\n🔔 リマインド定期実行開始: ${formatDateTime(new Date())}`);
+      await processReminderAutoSend();
+      console.log(`✅ リマインド定期実行完了: ${formatDateTime(new Date())}\n`);
+    } catch (error) {
+      console.error('❌ リマインド定期実行エラー:', error);
+    }
+  }, { timezone: 'Asia/Tokyo' });
+
+  console.log('⏰ 定期実行スケジュール設定完了: 特典=毎日17時 / ミッション=毎日15時 / リマインド=毎日15時30分（日本時間）\n');
 }
 
 // サーバー起動
