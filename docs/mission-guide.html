@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ミッション管理機能 使い方ガイド</title>
+  <style>
+    /* ========== リセット・基本 ========== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+      background: #1a1a2e;
+      color: #333;
+    }
+
+    /* ========== スライドラッパー ========== */
+    .slide-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+      overflow: hidden;
+    }
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 48px 60px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .45s ease, transform .45s ease;
+      transform: translateX(60px);
+    }
+    .slide.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(0);
+    }
+    .slide.prev {
+      opacity: 0;
+      transform: translateX(-60px);
+    }
+
+    /* ========== スライド背景テーマ ========== */
+    .slide-cover   { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .slide-toc     { background: #f8f9ff; }
+    .slide-default { background: #ffffff; }
+    .slide-purple  { background: linear-gradient(135deg, #f3f0ff 0%, #ede7ff 100%); }
+    .slide-green   { background: linear-gradient(135deg, #f0fff4 0%, #e6ffed 100%); }
+    .slide-yellow  { background: linear-gradient(135deg, #fffdf0 0%, #fff8e1 100%); }
+    .slide-blue    { background: linear-gradient(135deg, #f0f8ff 0%, #e3f0ff 100%); }
+    .slide-orange  { background: linear-gradient(135deg, #fff8f0 0%, #fff0e0 100%); }
+    .slide-end     { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+
+    /* ========== ナビゲーション ========== */
+    .nav {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      z-index: 100;
+      background: rgba(0,0,0,.45);
+      padding: 10px 22px;
+      border-radius: 40px;
+      backdrop-filter: blur(6px);
+    }
+    .nav button {
+      background: rgba(255,255,255,.15);
+      border: 1px solid rgba(255,255,255,.3);
+      color: white;
+      padding: 8px 22px;
+      border-radius: 24px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s;
+      white-space: nowrap;
+    }
+    .nav button:hover { background: rgba(255,255,255,.3); }
+    .nav button:disabled { opacity: .35; cursor: default; }
+    .slide-counter {
+      color: white;
+      font-size: 13px;
+      font-weight: 600;
+      min-width: 60px;
+      text-align: center;
+    }
+
+    /* ========== ドット ========== */
+    .dots {
+      position: fixed;
+      right: 24px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 100;
+    }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.3);
+      cursor: pointer;
+      transition: background .2s, transform .2s;
+    }
+    .dot.active { background: white; transform: scale(1.3); }
+
+    /* ========== キーボードヒント ========== */
+    .key-hint {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      color: rgba(255,255,255,.5);
+      font-size: 11px;
+      z-index: 100;
+    }
+
+    /* ========== カバースライド ========== */
+    .cover-badge {
+      background: rgba(255,255,255,.2);
+      color: white;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 18px;
+      border-radius: 20px;
+      margin-bottom: 28px;
+      letter-spacing: .5px;
+    }
+    .cover-title {
+      font-size: 52px;
+      font-weight: 800;
+      color: white;
+      text-align: center;
+      line-height: 1.2;
+      margin-bottom: 16px;
+      text-shadow: 0 2px 12px rgba(0,0,0,.2);
+    }
+    .cover-sub {
+      font-size: 20px;
+      color: rgba(255,255,255,.85);
+      text-align: center;
+      margin-bottom: 48px;
+      font-weight: 400;
+    }
+    .cover-chips {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .cover-chip {
+      background: rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.35);
+      color: white;
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    /* ========== 目次スライド ========== */
+    .toc-title {
+      font-size: 28px;
+      font-weight: 800;
+      color: #667eea;
+      margin-bottom: 36px;
+      text-align: center;
+    }
+    .toc-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      width: 100%;
+      max-width: 860px;
+    }
+    .toc-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 20px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(102,126,234,.1);
+      cursor: pointer;
+      transition: transform .2s, box-shadow .2s;
+      border-left: 4px solid #667eea;
+    }
+    .toc-item:hover { transform: translateX(4px); box-shadow: 0 4px 18px rgba(102,126,234,.2); }
+    .toc-num {
+      width: 32px; height: 32px;
+      background: #667eea;
+      color: white;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 800;
+      flex-shrink: 0;
+    }
+    .toc-text { font-size: 14px; font-weight: 600; color: #333; }
+
+    /* ========== 共通レイアウト ========== */
+    .slide-header {
+      width: 100%;
+      max-width: 1000px;
+      margin-bottom: 32px;
+    }
+    .slide-chapter {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #667eea;
+      margin-bottom: 8px;
+    }
+    .slide-chapter.purple { color: #7c5cbf; }
+    .slide-chapter.green  { color: #28a745; }
+    .slide-chapter.orange { color: #e07b00; }
+    .slide-chapter.red    { color: #dc3545; }
+    .slide-title {
+      font-size: 34px;
+      font-weight: 800;
+      color: #222;
+      line-height: 1.25;
+    }
+    .slide-desc {
+      font-size: 15px;
+      color: #555;
+      margin-top: 10px;
+      line-height: 1.7;
+    }
+    .content-area {
+      width: 100%;
+      max-width: 1000px;
+    }
+
+    /* ========== カード ========== */
+    .card-grid {
+      display: grid;
+      gap: 16px;
+    }
+    .card-grid-2 { grid-template-columns: 1fr 1fr; }
+    .card-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .card {
+      background: white;
+      border-radius: 14px;
+      padding: 22px 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.07);
+    }
+    .card-icon { font-size: 28px; margin-bottom: 10px; }
+    .card-title { font-size: 15px; font-weight: 800; color: #222; margin-bottom: 6px; }
+    .card-body  { font-size: 13px; color: #555; line-height: 1.7; }
+
+    /* ========== ステップ ========== */
+    .steps { display: flex; flex-direction: column; gap: 14px; }
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 18px;
+      background: white;
+      border-radius: 14px;
+      padding: 18px 22px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.07);
+    }
+    .step-num {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: #667eea;
+      color: white;
+      font-size: 16px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .step-num.purple { background: #7c5cbf; }
+    .step-num.green  { background: #28a745; }
+    .step-num.orange { background: #e07b00; }
+    .step-content {}
+    .step-title { font-size: 15px; font-weight: 700; color: #222; margin-bottom: 4px; }
+    .step-body  { font-size: 13px; color: #555; line-height: 1.7; }
+    .step-note {
+      display: inline-block;
+      background: #f0f2ff;
+      color: #667eea;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 10px;
+      margin-top: 6px;
+    }
+    .step-note.orange { background: #fff3e0; color: #e07b00; }
+    .step-note.green  { background: #e8f5e9; color: #2e7d32; }
+    .step-note.red    { background: #fdecea; color: #c62828; }
+    .step-note.purple { background: #f3e8ff; color: #6a1b9a; }
+
+    /* ========== タイムライン ========== */
+    .timeline { display: flex; align-items: stretch; gap: 0; width: 100%; }
+    .tl-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .tl-dot-row {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      position: relative;
+      margin-bottom: 14px;
+    }
+    .tl-dot {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: #667eea;
+      color: white;
+      font-size: 20px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      z-index: 1;
+      box-shadow: 0 3px 10px rgba(102,126,234,.4);
+    }
+    .tl-dot.purple { background: #7c5cbf; box-shadow: 0 3px 10px rgba(124,92,191,.4); }
+    .tl-dot.green  { background: #28a745; box-shadow: 0 3px 10px rgba(40,167,69,.4); }
+    .tl-dot.orange { background: #e07b00; box-shadow: 0 3px 10px rgba(224,123,0,.4); }
+    .tl-line {
+      flex: 1;
+      height: 3px;
+      background: linear-gradient(to right, #667eea44, #667eea22);
+    }
+    .tl-item:last-child .tl-line { display: none; }
+    .tl-card {
+      background: white;
+      border-radius: 12px;
+      padding: 14px 16px;
+      text-align: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,.07);
+      width: 100%;
+    }
+    .tl-label { font-size: 13px; font-weight: 800; color: #222; margin-bottom: 4px; }
+    .tl-sub   { font-size: 11px; color: #777; line-height: 1.5; }
+
+    /* ========== バッジ・ラベル ========== */
+    .badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 13px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .badge-blue   { background: #e3f0ff; color: #1565c0; }
+    .badge-green  { background: #e8f5e9; color: #2e7d32; }
+    .badge-purple { background: #f3e8ff; color: #6a1b9a; }
+    .badge-orange { background: #fff3e0; color: #e65100; }
+    .badge-red    { background: #fdecea; color: #c62828; }
+    .badge-gray   { background: #f0f0f0; color: #666; }
+
+    /* ========== テーブル ========== */
+    .info-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .info-table th {
+      background: #667eea;
+      color: white;
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 700;
+    }
+    .info-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid #eee;
+      color: #333;
+      vertical-align: top;
+    }
+    .info-table tr:last-child td { border-bottom: none; }
+    .info-table tr:nth-child(even) td { background: #f8f9ff; }
+
+    /* ========== 強調ボックス ========== */
+    .alert-box {
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .alert-box.blue   { background: #e3f0ff; border-left: 4px solid #1565c0; }
+    .alert-box.green  { background: #e8f5e9; border-left: 4px solid #2e7d32; }
+    .alert-box.orange { background: #fff3e0; border-left: 4px solid #e65100; }
+    .alert-box.purple { background: #f3e8ff; border-left: 4px solid #6a1b9a; }
+    .alert-box.red    { background: #fdecea; border-left: 4px solid #c62828; }
+    .alert-icon { font-size: 22px; flex-shrink: 0; margin-top: 1px; }
+    .alert-text { font-size: 13px; color: #333; line-height: 1.7; }
+    .alert-text strong { font-weight: 700; }
+
+    /* ========== 2カラムレイアウト ========== */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; max-width: 1000px; }
+    .col-card {
+      background: white;
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.07);
+    }
+    .col-card-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: #222;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #667eea;
+    }
+    .col-card-title.purple { border-bottom-color: #7c5cbf; }
+    .col-card-title.green  { border-bottom-color: #28a745; }
+    .col-card-title.orange { border-bottom-color: #e07b00; }
+
+    /* ========== リスト ========== */
+    .check-list { list-style: none; }
+    .check-list li {
+      font-size: 13px;
+      color: #444;
+      padding: 5px 0;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      line-height: 1.6;
+    }
+    .check-list li::before {
+      content: '✓';
+      color: #28a745;
+      font-weight: 800;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* ========== エンドスライド ========== */
+    .end-title { font-size: 46px; font-weight: 800; color: white; text-align: center; margin-bottom: 16px; }
+    .end-sub   { font-size: 18px; color: rgba(255,255,255,.85); text-align: center; margin-bottom: 36px; }
+    .end-chips { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+    .end-chip {
+      background: rgba(255,255,255,.2);
+      border: 1px solid rgba(255,255,255,.35);
+      color: white;
+      padding: 10px 24px;
+      border-radius: 24px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    /* ========== レスポンシブ ========== */
+    @media (max-width: 768px) {
+      .slide { padding: 24px 20px 80px; }
+      .cover-title { font-size: 32px; }
+      .toc-grid, .card-grid-2, .card-grid-3, .two-col { grid-template-columns: 1fr; }
+      .timeline { flex-direction: column; gap: 10px; }
+      .tl-line { display: none; }
+      .slide-title { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="slide-container" id="slideContainer">
+
+  <!-- ===== スライド1: カバー ===== -->
+  <div class="slide slide-cover active" id="slide-0">
+    <div class="cover-badge">📖 使い方ガイド</div>
+    <div class="cover-title">🎯 ミッション管理</div>
+    <div class="cover-sub">生徒様へのミッションを管理・送信する機能の完全ガイド</div>
+    <div class="cover-chips">
+      <div class="cover-chip">✉️ メッセージ管理</div>
+      <div class="cover-chip">▶ ミッション開始</div>
+      <div class="cover-chip">🔔 リマインド自動送信</div>
+      <div class="cover-chip">📋 進捗管理</div>
+    </div>
+  </div>
+
+  <!-- ===== スライド2: 目次 ===== -->
+  <div class="slide slide-toc" id="slide-1">
+    <div class="toc-title">📋 このガイドの内容</div>
+    <div class="toc-grid">
+      <div class="toc-item" onclick="goTo(2)">
+        <div class="toc-num">1</div>
+        <div class="toc-text">ミッション管理とは？<br><span style="font-weight:400;color:#888;font-size:12px;">全体像と基本の流れ</span></div>
+      </div>
+      <div class="toc-item" onclick="goTo(3)">
+        <div class="toc-num">2</div>
+        <div class="toc-text">ページの見方<br><span style="font-weight:400;color:#888;font-size:12px;">画面構成と各エリアの説明</span></div>
+      </div>
+      <div class="toc-item" onclick="goTo(5)">
+        <div class="toc-num">3</div>
+        <div class="toc-text">メッセージの設定<br><span style="font-weight:400;color:#888;font-size:12px;">送信文の編集・保存方法</span></div>
+      </div>
+      <div class="toc-item" onclick="goTo(7)">
+        <div class="toc-num">4</div>
+        <div class="toc-text">ミッションの開始・進捗管理<br><span style="font-weight:400;color:#888;font-size:12px;">生徒へ送信〜完了チェックまで</span></div>
+      </div>
+      <div class="toc-item" onclick="goTo(10)">
+        <div class="toc-num">5</div>
+        <div class="toc-text">リマインド機能<br><span style="font-weight:400;color:#888;font-size:12px;">未完了時の自動フォロー</span></div>
+      </div>
+      <div class="toc-item" onclick="goTo(12)">
+        <div class="toc-num">6</div>
+        <div class="toc-text">テスト送信<br><span style="font-weight:400;color:#888;font-size:12px;">送信前に内容を確認する方法</span></div>
+      </div>
+      <div class="toc-item" onclick="goTo(13)">
+        <div class="toc-num">7</div>
+        <div class="toc-text">自動送信のON/OFF<br><span style="font-weight:400;color:#888;font-size:12px;">機能の有効化・停止</span></div>
+      </div>
+      <div class="toc-item" onclick="goTo(14)">
+        <div class="toc-num">8</div>
+        <div class="toc-text">よくある疑問<br><span style="font-weight:400;color:#888;font-size:12px;">注意点・トラブルQ&amp;A</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== スライド3: ミッション管理とは ===== -->
+  <div class="slide slide-default" id="slide-2">
+    <div class="slide-header">
+      <div class="slide-chapter">Chapter 1</div>
+      <div class="slide-title">🎯 ミッション管理とは？</div>
+      <div class="slide-desc">生徒様に段階的なミッションを送り、取り組み状況を一元管理する機能です。</div>
+    </div>
+    <div class="content-area">
+      <div class="card-grid card-grid-3">
+        <div class="card">
+          <div class="card-icon">1️⃣</div>
+          <div class="card-title">ミッション1</div>
+          <div class="card-body">管理者が「ミッション開始」ボタンを押したタイミングで即座に送信されます。</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">2️⃣</div>
+          <div class="card-title">ミッション2</div>
+          <div class="card-body">ミッション1の完了チェックを入れた翌日の15時に自動で送信されます。</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">3️⃣</div>
+          <div class="card-title">ミッション3</div>
+          <div class="card-body">ミッション2の完了チェックを入れた翌日の15時に自動で送信されます。</div>
+        </div>
+      </div>
+      <div class="alert-box blue" style="margin-top:20px;">
+        <div class="alert-icon">📨</div>
+        <div class="alert-text">
+          すべてのメッセージは生徒様の <strong>個別Discordチャンネル</strong> に送信されます。<br>
+          ミッションは <strong>1生徒1セット</strong> で管理され、進捗は管理画面からリアルタイムで確認できます。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== スライド4: 全体の流れ ===== -->
+  <div class="slide slide-blue" id="slide-3">
+    <div class="slide-header">
+      <div class="slide-chapter">Chapter 1</div>
+      <div class="slide-title">🔄 ミッションの全体フロー</div>
+      <div class="slide-desc">管理者の操作と自動送信の流れを図で確認しましょう。</div>
+    </div>
+    <div class="content-area">
+      <div class="timeline">
+        <div class="tl-item">
+          <div class="tl-dot-row">
+            <div class="tl-dot">⚙️</div>
+            <div class="tl-line"></div>
+          </div>
+          <div class="tl-card">
+            <div class="tl-label">準備</div>
+            <div class="tl-sub">メッセージを<br>設定・保存する</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot-row">
+            <div class="tl-dot">▶️</div>
+            <div class="tl-line"></div>
+          </div>
+          <div class="tl-card">
+            <div class="tl-label">開始（手動）</div>
+            <div class="tl-sub">ミッション開始ボタン押下<br>→ ミッション1 即時送信</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot-row">
+            <div class="tl-dot green">✅</div>
+            <div class="tl-line"></div>
+          </div>
+          <div class="tl-card">
+            <div class="tl-label">完了チェック</div>
+            <div class="tl-sub">生徒が取り組んだら<br>チェックを入れる</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot-row">
+            <div class="tl-dot purple">🤖</div>
+            <div class="tl-line"></div>
+          </div>
+          <div class="tl-card">
+            <div class="tl-label">自動送信</div>
+            <div class="tl-sub">翌日15時に<br>次ミッションを送信</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot-row">
+            <div class="tl-dot orange">🔔</div>
+            <div class="tl-line"></div>
+          </div>
+          <div class="tl-card">
+            <div class="tl-label">リマインド</div>
+            <div class="tl-sub">3日後も未完了なら<br>リマインド自動送信</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot-row">
+            <div class="tl-dot green">🏁</div>
+            <div class="tl-line" style="visibility:hidden;"></div>
+          </div>
+          <div class="tl-card">
+            <div class="tl-label">完了</div>
+            <div class="tl-sub">ミッション3完了で<br>全ミッション終了</div>
+          </div>
+        </div>
+      </div>
+      <div class="alert-box green" style="margin-top:20px;">
+        <div class="alert-icon">🤖</div>
+        <div class="alert-text">
+          <strong>ミッション2・3の送信は完全自動です。</strong> チェックを入れるだけで、翌日15時に自動でメッセージが送信されます。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== スライド5: ページ構成 ===== -->
+  <div class="slide slide-default" id="slide-4">
+    <div class="slide-header">
+      <div class="slide-chapter">Chapter 2</div>
+      <div class="slide-title">📐 管理ページの構成</div>
+      <div class="slide-desc">ミッション管理ページは上から順に7つのエリアで構成されています。</div>
+    </div>
+    <div class="content-area">
+      <div class="card-grid" style="grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="card" style="border-left:4px solid #667eea;">
+          <div class="card-title">🔄 自動送信 ON/OFF スイッチ</div>
+          <div class="card-body">ミッションの自動送信とリマインドを一括でON/OFFします。</div>
+        </div>
+        <div class="card" style="border-left:4px solid #ffc107;">
+          <div class="card-title">⚡ テスト送信</div>
+          <div class="card-body">固定のテスト用チャンネルに試し送りして内容を確認できます。</div>
+        </div>
+        <div class="card" style="border-left:4px solid #667eea;">
+          <div class="card-title">✏️ ミッションメッセージ編集</div>
+          <div class="card-body">ミッション1〜3の本文を入力・保存します。</div>
+        </div>
+        <div class="card" style="border-left:4px solid #7c5cbf;">
+          <div class="card-title">🔔 リマインドメッセージ編集</div>
+          <div class="card-body">未完了時に送るリマインド文をミッションごとに設定します。</div>
+        </div>
+        <div class="card" style="border-left:4px solid #28a745;grid-column:1/-1;">
+          <div class="card-title">📋 生徒別ミッション進捗テーブル</div>
+          <div class="card-body">全生徒の送付日・完了状況・リマインド状況を一覧で確認。氏名・学籍番号で絞り込み検索も可能です。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== スライド6: メッセージ設定 ===== -->
+  <div class="slide slide-default" id="slide-5">
+    <div class="slide-header">
+      <div class="slide-chapter">Chapter 3</div>
+      <div class="slide-title">✏️ ミッションメッセージの設定</div>
+      <div class="slide-desc">送信前にまず各ミッションのメッセージを設定しましょう。</div>
+    </div>
+    <div class="content-area">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-title">ミッション管理ページを開く</div>
+            <div class="step-body">ページ上部のナビゲーションから「🎯 ミッション管理」をクリックします。</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-title">「✏️ ミッションメッセージ編集」エリアを探す</div>
+            <div class="step-body">ページをスクロールすると3枚のテキストエリアが並んでいます。左からミッション1・2・3です。</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <div class="step-title">各ミッションのメッセージを入力する</div>
+            <div class="step-body">テキストエリアに送信したい文章を入力します。Discordのマークダウン（**太字** / __下線__ / # 見出し）が使えます。<br>
+            また、 <strong>「◯月◯日」</strong> と書いておくと、送信当日の翌日の日付に自動で置き換わります。</div>
+            <div class="badge-row">
+              <span class="badge badge-blue">**太字**</span>
+              <span class="badge badge-blue">__下線__</span>
+              <span class="badge badge-blue"># 見出し</span>
+              <span class="badge badge-orange">◯月◯日 → 翌日の日付に自動置換</span>
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <div class="step-title">「💾 保存」ボタンを押す</div>
+            <div class="step-body">ミッションごとに保存ボタンがあります。それぞれ保存してください。画面右下に「✅ 保存しました」のポップアップが出れば完了です。</div>
+            <span class="step-note red">⚠️ 保存しないとメッセージは反映されません</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== スライド7: 日付自動置換 ===== -->
+  <div class="slide slide-yellow" id="slide-6">
+    <div class="slide-header">
+      <div class="slide-chapter orange">Chapter 3 — 補足</div>
+      <div class="slide-title">📅「◯月◯日」の自動置換について</div>
+      <div class="slide-desc">メッセージ内に特定の文字列を入れておくと、送信時に日付が自動で挿入されます。</div>
+    </div>
+    <div class="content-area">
+      <div class="two-col">
+        <div class="col-card">
+          <div class="col-card-title orange">仕組み</div>
+          <div class="steps" style="gap:10px;">
+            <div class="step" style="padding:14px 16px;">
+              <div class="step-num orange">①</div>
+              <div class="step-content">
+                <div class="step-title" style="font-size:13px;">メッセージに「◯月◯日」と入力</div>
+                <div class="step-body">メッセージのどこかに <strong>◯月◯日</strong> と書いておきます。</div>
+              </div>
+            </div>
+            <div class="step" style="padding:14px 16px;">
+              <div class="step-num orange">②</div>
+              <div class="step-content">
+                <div class="step-title" style="font-size:13px;">送信時に自動置換される</div>
+                <div class="step-body">送信当日の <strong>翌日の日付</strong>（日本時間）に自動で変換されます。</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-card">
+          <div class="col-card-title orange">置換の例</div>
+          <div style="background:#fffdf0;border:2px dashed #ffc107;border-radius:10px;padding:16px;margin-bottom:14px;">
+            <div style="font-size:12px;color:#888;margin-bottom:6px;">📝 設定したメッセージ</div>
+            <div style="font-size:13px;color:#333;line-height:1.7;">「今日のミッションを<br>◯月◯日までに<br>完了してください！」</div>
+          </div>
+          <div style="text-align:center;font-size:20px;margin-bottom:10px;">⬇️</div>
+          <div style="background:#e8f5e9;border:2px solid #4caf50;border-radius:10px;padding:16px;">
+            <div style="font-size:12px;color:#888;margin-bottom:6px;">📨 実際に送られるメッセージ（例：5月13日に送信した場合）</div>
+            <div style="font-size:13px;color:#333;line-height:1.7;">「今日のミッションを<br><strong style="color:#2e7d32;">5月14日</strong>までに<br>完了してください！」</div>
+          </div>
+        </div>
+      </div>
+      <div class="alert-box orange" style="margin-top:16px;">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-text">
+          <strong>◯（丸）は全角の「◯」（記号）を使ってください。</strong>「〇」（漢数字のゼロ）や「O」（アルファベット）では置換されません。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== スライド8: ミッション開始 ===== -->
+  <div class="slide slide-green" id="slide-7">
+    <div class="slide-header">
+      <div class="slide-chapter green">Chapter 4</div>
+      <div class="slide-title">▶ ミッションを開始する（ミッション1送信）</div>
+      <div class="slide-desc">生徒様のミッションをスタートさせる手順です。</div>
+    </div>
+    <div class="content-area">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num green">1</div>
+          <div class="step-content">
+            <div class="step-title">進捗テーブルで対象の生徒を探す</div>
+            <div class="step-body">ページ下部の「📋 生徒別ミッション進捗」テーブルを確認します。検索バーに氏名や学籍番号を入力すると素早く絞り込めます。</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num green">2</div>
+          <div class="step-content">
+            <div class="step-title">「▶ ミッション開始」ボタンを押す</div>
+            <div class="step-body">対象生徒の行の右端「操作」列にある「▶ ミッション開始」ボタンをクリックします。</div>
+            <span class="step-note red">⚠️ ボタンがグレーでクリックできない場合 → Discord未設定の生徒です。スプレッドシートを確認してください。</span>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num green">3</div>
+          <div class="step-content">
+            <div class="step-title">確認ダイアログで「OK」を押す</div>
+            <div class="step-body">「〇〇さんのミッションを開始しますか？」という確認画面が出ます。問題なければ OK を押します。</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num green">4</div>
+          <div class="step-content">
+            <div class="step-title">ミッション1が即座に送信される</div>
+            <div class="step-body">Discordの個別チャンネルにミッション1のメッセージが届きます。テーブルのミッション1列に送付日が記録されます。</div>
+            <span class="step-note green">✅ 送付日が表示されたら送信成功です</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== スライド9: 完了チェック ===== -->
+  <div class="slide slide-default" id="slide-8">
+    <div class="slide-header">
+      <div class="slide-chapter green">Chapter 4</div>
+      <div class="slide-title">✅ 完了チェックを入れる</div>
+      <div class="slide-desc">生徒様がミッションに取り組んだら、管理画面でチェックを入れます。チェックを入れることで次のミッションが翌日自動送信されます。</div>
+    </div>
+    <div class="content-area">
+      <div class="two-col">
+        <div class="col-card">
+          <div class="col-card-title green">チェックの入れ方</div>
+          <div class="steps" style="gap:10px;">
+            <div class="step" style="padding:14px 16px;">
+              <div class="step-num green">1</div>
+              <div class="step-content">
+                <div class="step-title" style="font-size:13px;">進捗テーブルで対象生徒を探す</div>
+                <div class="step-body">氏名または学籍番号で検索すると素早く見つかります。</div>
+              </div>
+            </div>
+            <div class="step" style="padding:14px 16px;">
+              <div class="step-num green">2</div>
+              <div class="step-content">
+                <div class="step-title" style="font-size:13px;">ミッション列の「完了」チェックを入れる</div>
+                <div class="step-body">ミッション1〜3 それぞれに「完了」チェックボックスがあります。</div>
+              </div>
+            </div>
+            <div class="step" style="padding:14px 16px;">
+              <div class="step-num green">3</div>
+              <div class="step-content">
+                <div class="step-title" style="font-size:13px;">翌日15時に次のミッションが自動送信</div>
+                <div class="step-body">チェックを入れた翌日の15時に次ミッションが自動で届きます。</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-card">
+          <div class="col-card-title">チェック後の表示変化</div>
+          <table class="info-table">
+            <thead>
+              <tr><th>状態</th><th>表示</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>未送信</td><td style="color:#bbb;font-style:italic;">未送信</td></tr>
+              <tr><td>送付済み・未完了</td><td>送付日 + ⏰ 3日後リマインド</td></tr>
+              <tr><td>完了チェック済み</td><td>送付日 + ✓ 完了</td></tr>
+              <tr><td>次ミッション待機中</td><td>⏳ 翌日15時送信予定</td></tr>
+              <tr><td>リマインド送信済み</td><td>🔔 リマインド済 バッジ</td></tr>
+            </tbody>
+          </table>
+          <div class="alert-box blue" style="margin-top:12px;">
+            <div class="alert-icon">💡</div>
+            <div class="alert-text">チェックを <strong>外す</strong> こともできます。誤ってチェックした場合はもう一度クリックして戻してください。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== スライド10: ミッション再開始 ===== -->
+  <div class="slide slide-default" id="slide-9">
+    <div class="slide-header">
+      <div class="slide-chapter green">Chapter 4</div>
+      <div class="slide-title">🔁 ミッションを最初からやり直す</div>
+      <div class="slide-desc">一度開始したミッションを最初からリセットして再送信したい場合の操作です。</div>
+    </div>
+    <div class="content-area">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-title">対象生徒の「操作」列を確認する</div>
+            <div class="step-body">ミッション進行中の生徒には「🔄 進行中」バッジと「🔁 再開始」ボタンが表示されています。</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-title">「🔁 再開始」ボタンを押す</div>
+            <div class="step-body">ボタンを押すと確認ダイアログが表示されます。</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <div class="step-title">確認ダイアログで「OK」を押す</div>
+            <div class="step-body">OK を押すと、これまでの進捗（送付日・完了チェック・リマインド記録）がすべてリセットされ、ミッション1が再送信されます。</div>
+            <span class="step-note red">⚠️ リセットは元に戻せません。意図した操作かを確認してから OK を押してください。</span>
+          </div>
+        </div>
+      </div>
+      <div class="alert-box orange" style="margin-top:16px;">
+        <div class="alert-icon">🔄</div>
+        <div class="alert-text">
+          再開始後はミッション1から全て送り直しになります。<strong>ミッション2・3のリマインド済み記録も削除</strong>されます。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== スライド11: リマインド概要 ===== -->
+  <div class="slide slide-purple" id="slide-10">
+    <div class="slide-header">
+      <div class="slide-chapter purple">Chapter 5</div>
+      <div class="slide-title">🔔 リマインド機能とは？</div>
+      <div class="slide-desc">完了チェックが入らなかった生徒に、自動でフォローメッセージを送る機能です。</div>
+    </div>
+    <div class="content-area">
+      <div class="card-grid card-grid-2" style="margin-bottom:16px;">
+        <div class="card" style="border-top:4px solid #7c5cbf;">
+          <div class="card-icon">⏰</div>
+          <div class="card-title">送信タイミング</div>
+          <div class="card-body">
+            ミッション送付日から <strong>3日後</strong> を過ぎても完了チェックが入っていない場合、毎日 <strong>15時30分</strong> に自動送信されます。
+          </div>
+        </div>
+        <div class="card" style="border-top:4px solid #7c5cbf;">
+          <div class="card-icon">🔂</div>
+          <div class="card-title">送信回数</div>
+          <div class="card-body">
+            <strong>1回だけ</strong> 送信されます。一度リマインドを送った生徒には、それ以降は送信されません。
+          </div>
+        </div>
+        <div class="card" style="border-top:4px solid #7c5cbf;">
+          <div class="card-icon">🎯</div>
+          <div class="card-title">対象ミッション</div>
+          <div class="card-body">
+            ミッション1・2・3 それぞれで独立して判定されます。未設定のミッションのリマインドはスキップされます。
+          </div>
+        </div>
+        <div class="card" style="border-top:4px solid #7c5cbf;">
+          <div class="card-icon">📋</div>
+          <div class="card-title">送信後の表示</div>
+          <div class="card-body">
+            リマインドを送った生徒のミッション列に <strong>「🔔 リマインド済」バッジ</strong>（紫）が表示されます。
+          </div>
+        </div>
+      </div>
+      <div class="alert-box purple">
+        <div class="alert-icon">💜</div>
+        <div class="alert-text">
+          リマインドの <strong>自動送信はミッション機能のON/OFFと連動</strong> しています。スイッチがOFFの間はリマインドも送信されません。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== スライド12: リマインドメッセージ設定 ===== -->
+  <div class="slide slide-default" id="slide-11">
+    <div class="slide-header">
+      <div class="slide-chapter purple">Chapter 5</div>
+      <div class="slide-title">🔔 リマインドメッセージを設定する</div>
+      <div class="slide-desc">ミッションメッセージ編集の下にある「🔔 リマインドメッセージ編集」エリアで設定します。</div>
+    </div>
+    <div class="content-area">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num purple">1</div>
+          <div class="step-content">
+            <div class="step-title">「🔔 リマインドメッセージ編集」エリアを開く</div>
+            <div class="step-body">ミッションメッセージ編集の下にある紫枠のセクションです。ミッション1〜3 それぞれのリマインドテキストエリアがあります。</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num purple">2</div>
+          <div class="step-content">
+            <div class="step-title">各ミッションのリマインドメッセージを入力する</div>
+            <div class="step-body">「まだ取り組めていませんか？」などのフォロー文を入力します。ミッションメッセージと同様に、<strong>◯月◯日</strong> の自動置換も使えます。</div>
+            <span class="step-note purple">💡 空欄のままにするとそのミッションのリマインドはスキップされます</span>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num purple">3</div>
+          <div class="step-content">
+            <div class="step-title">「💾 保存」ボタン（紫）を押す</div>
+            <div class="step-body">ミッションごとに紫の保存ボタンがあります。それぞれ押して保存してください。</div>
+            <span class="step-note red">⚠️ 保存しないと変更は反映されません</span>
+          </div>
+        </div>
+      </div>
+      <div class="alert-box purple" style="margin-top:8px;">
+        <div class="alert-icon">🔔</div>
+        <div class="alert-text">
+          リマインドメッセージは <strong>ミッションのメッセージとは別に管理</strong> されています。ミッション本文を変えてもリマインド文は変わりません。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== スライド13: テスト送信 ===== -->
+  <div class="slide slide-yellow" id="slide-12">
+    <div class="slide-header">
+      <div class="slide-chapter orange">Chapter 6</div>
+      <div class="slide-title">⚡ テスト送信で内容を確認する</div>
+      <div class="slide-desc">実際に生徒様へ送る前に、テスト用チャンネルで内容・見た目を確認できます。</div>
+    </div>
+    <div class="content-area">
+      <div class="two-col">
+        <div class="col-card">
+          <div class="col-card-title orange">テスト送信の手順</div>
+          <div class="steps" style="gap:10px;">
+            <div class="step" style="padding:12px 16px;">
+              <div class="step-num orange">1</div>
+              <div class="step-content">
+                <div class="step-title" style="font-size:13px;">ページ上部の「⚡ テスト送信」を探す</div>
+                <div class="step-body">黄色ボーダーのカードです。</div>
+              </div>
+            </div>
+            <div class="step" style="padding:12px 16px;">
+              <div class="step-num orange">2</div>
+              <div class="step-content">
+                <div class="step-title" style="font-size:13px;">送信したいミッションのボタンを押す</div>
+                <div class="step-body">「🧪 ミッション1 テスト」「🧪 ミッション2 テスト」「🧪 ミッション3 テスト」の3つから選べます。</div>
+              </div>
+            </div>
+            <div class="step" style="padding:12px 16px;">
+              <div class="step-num orange">3</div>
+              <div class="step-content">
+                <div class="step-title" style="font-size:13px;">テスト用チャンネルで確認する</div>
+                <div class="step-body">固定のテスト送信先チャンネルにメッセージが届きます。文字・改行・絵文字が正しく表示されているか確認してください。</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-card">
+          <div class="col-card-title orange">テスト送信の特徴</div>
+          <ul class="check-list" style="margin-bottom:12px;">
+            <li>生徒様のチャンネルには送られません</li>
+            <li>DBに記録されません（進捗に影響しない）</li>
+            <li>◯月◯日の置換も実際の送信と同様に動作</li>
+            <li>メッセージ先頭に「⚡ テスト送信」と表示される</li>
+            <li>ミッション機能がOFFでも送信できる</li>
+          </ul>
+          <div class="alert-box orange">
+            <div class="alert-icon">💡</div>
+            <div class="alert-text">メッセージを <strong>変更・保存した後は必ずテスト送信</strong> して確認することをおすすめします。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== スライド14: ON/OFF ===== -->
+  <div class="slide slide-blue" id="slide-13">
+    <div class="slide-header">
+      <div class="slide-chapter">Chapter 7</div>
+      <div class="slide-title">🔄 自動送信の ON / OFF</div>
+      <div class="slide-desc">ページ最上部のトグルスイッチで、自動送信機能を一括で制御できます。</div>
+    </div>
+    <div class="content-area">
+      <div class="two-col" style="margin-bottom:16px;">
+        <div class="col-card" style="border-top:4px solid #28a745;">
+          <div class="col-card-title green">ON のとき（緑）</div>
+          <ul class="check-list">
+            <li>毎日 <strong>15時</strong> にミッション2・3の自動送信が実行される</li>
+            <li>毎日 <strong>15時30分</strong> にリマインドの自動送信が実行される</li>
+            <li>「▶ ミッション開始」ボタンも引き続き使用可能</li>
+          </ul>
+        </div>
+        <div class="col-card" style="border-top:4px solid #dc3545;">
+          <div class="col-card-title" style="border-bottom-color:#dc3545;">OFF のとき（グレー）</div>
+          <ul class="check-list">
+            <li>ミッション2・3の自動送信が停止される</li>
+            <li>リマインドの自動送信も停止される</li>
+            <li>「▶ ミッション開始」ボタンは <strong>引き続き使用できる</strong></li>
+          </ul>
+        </div>
+      </div>
+      <div class="alert-box blue">
+        <div class="alert-icon">⚙️</div>
+        <div class="alert-text">
+          <strong>スイッチのON/OFFはメモリ上で管理されています。</strong><br>
+          サーバーが再起動（Renderのスリープ復帰など）すると、環境変数 <code style="background:#e8f0fe;padding:1px 6px;border-radius:4px;">ENABLE_MISSION</code> の設定値に戻ります。<br>
+          通常運用中は <strong>ONのまま</strong> にしておくことを推奨します。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== スライド15: よくある疑問 ===== -->
+  <div class="slide slide-default" id="slide-14">
+    <div class="slide-header">
+      <div class="slide-chapter">Chapter 8</div>
+      <div class="slide-title">❓ よくある疑問・注意点</div>
+    </div>
+    <div class="content-area">
+      <div class="steps" style="gap:12px;">
+        <div class="step">
+          <div class="step-content">
+            <div class="step-title">Q. ミッション開始ボタンが押せない（グレーになっている）</div>
+            <div class="step-body">その生徒のDiscordチャンネルURLがスプレッドシートに未入力です。RAW_生徒様情報シートのM列を確認してください。</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-content">
+            <div class="step-title">Q. ミッション2・3が自動送信されない</div>
+            <div class="step-body">① 自動送信スイッチが OFF になっていないか確認してください。② ミッション1（または前のミッション）の「完了」チェックが入っているか確認してください。チェックがないと次のミッションに進みません。</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-content">
+            <div class="step-title">Q. リマインドが送られていない</div>
+            <div class="step-body">① 自動送信スイッチがONであるか確認。② リマインドメッセージが設定・保存されているか確認。③ 送付日から3日が経過しているか確認。④ すでに完了チェックが入っている場合はリマインド対象外です。</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-content">
+            <div class="step-title">Q. 進捗テーブルに生徒が表示されない</div>
+            <div class="step-body">生徒一覧はGoogleスプレッドシートの「❹オンボーディングシート」から取得しています。シートに該当生徒のデータが入力されているか確認してください。</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-content">
+            <div class="step-title">Q. 誤ってミッション開始してしまった</div>
+            <div class="step-body">「🔁 再開始」ボタンを押すことで進捗をリセットし、ミッション1から送り直せます。ただし元の進捗記録は削除されます。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== スライド16: まとめ ===== -->
+  <div class="slide slide-end" id="slide-15">
+    <div class="end-title">📝 運用のポイントまとめ</div>
+    <div class="end-sub">スムーズに使うための3つのポイント</div>
+    <div class="end-chips" style="gap:14px;max-width:720px;justify-content:center;">
+      <div class="end-chip" style="padding:16px 24px;border-radius:14px;text-align:left;min-width:200px;">
+        <div style="font-size:22px;margin-bottom:6px;">⚙️</div>
+        <div style="font-size:14px;font-weight:800;margin-bottom:4px;">最初に設定する</div>
+        <div style="font-size:12px;opacity:.85;">ミッション1〜3のメッセージ<br>とリマインドを先に全部設定</div>
+      </div>
+      <div class="end-chip" style="padding:16px 24px;border-radius:14px;text-align:left;min-width:200px;">
+        <div style="font-size:22px;margin-bottom:6px;">✅</div>
+        <div style="font-size:14px;font-weight:800;margin-bottom:4px;">チェックで次へ進む</div>
+        <div style="font-size:12px;opacity:.85;">生徒が取り組んだら<br>すぐ完了チェックを入れる</div>
+      </div>
+      <div class="end-chip" style="padding:16px 24px;border-radius:14px;text-align:left;min-width:200px;">
+        <div style="font-size:22px;margin-bottom:6px;">🔄</div>
+        <div style="font-size:14px;font-weight:800;margin-bottom:4px;">スイッチはONのまま</div>
+        <div style="font-size:12px;opacity:.85;">通常はONにしておくと<br>後は自動で動く</div>
+      </div>
+    </div>
+    <div style="margin-top:36px;color:rgba(255,255,255,.6);font-size:13px;">← 矢印キー or ボタンでスライドを移動できます</div>
+  </div>
+
+</div><!-- /slide-container -->
+
+<!-- ナビゲーション -->
+<nav class="nav">
+  <button id="btnPrev" onclick="prevSlide()" disabled>← 前へ</button>
+  <div class="slide-counter" id="counter">1 / 16</div>
+  <button id="btnNext" onclick="nextSlide()">次へ →</button>
+</nav>
+
+<!-- ドット -->
+<div class="dots" id="dots"></div>
+
+<!-- キーボードヒント -->
+<div class="key-hint">← → キーでも移動できます</div>
+
+<script>
+  const TOTAL = 16;
+  let current = 0;
+
+  // ドット生成
+  const dotsEl = document.getElementById('dots');
+  for (let i = 0; i < TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dotsEl.appendChild(d);
+  }
+
+  function goTo(n) {
+    const slides = document.querySelectorAll('.slide');
+    const dots   = document.querySelectorAll('.dot');
+
+    slides[current].classList.remove('active');
+    slides[current].classList.add('prev');
+    setTimeout(() => slides[current].classList.remove('prev'), 460);
+
+    dots[current].classList.remove('active');
+    current = Math.max(0, Math.min(TOTAL - 1, n));
+    slides[current].classList.add('active');
+    dots[current].classList.add('active');
+
+    document.getElementById('counter').textContent = `${current + 1} / ${TOTAL}`;
+    document.getElementById('btnPrev').disabled = current === 0;
+    document.getElementById('btnNext').disabled = current === TOTAL - 1;
+  }
+
+  function nextSlide() { if (current < TOTAL - 1) goTo(current + 1); }
+  function prevSlide() { if (current > 0) goTo(current - 1); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown')  nextSlide();
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')    prevSlide();
+  });
+
+  // スワイプ対応
+  let touchStartX = 0;
+  document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
+  document.addEventListener('touchend',   e => {
+    const diff = touchStartX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) { diff > 0 ? nextSlide() : prevSlide(); }
+  });
+</script>
+</body>
+</html>
