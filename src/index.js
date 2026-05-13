@@ -11,7 +11,7 @@ const { initializeDatabase, getAllBenefitHistory, getSendLogs, saveBenefitImage,
 const { initializeGoogleSheets, getMessageForBenefit, getMissionStudentList } = require('./services/googleSheets');
 const { initializeDiscordBot, sendDiscordMessage } = require('./services/discord');
 const { processAllBenefits } = require('./services/benefitService');
-const { sendMission1, sendMissionN, processMissionAutoSend } = require('./services/missionService');
+const { sendMission1, sendMissionN, processMissionAutoSend, replaceDatePlaceholder, getTomorrowLabel } = require('./services/missionService');
 const { formatDateTime } = require('./utils/dateUtils');
 const ssoAuth = require('../middleware/sso-auth-middleware');
 
@@ -378,6 +378,57 @@ app.get('/api/mission/progress/:studentId', async (req, res) => {
     res.json({ success: true, record });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// API: ミッションテスト送信
+// 固定テスト送信先へ指定ミッション番号のメッセージを送信（DBへの記録なし）
+app.post('/api/mission/test-send', async (req, res) => {
+  const { missionNo } = req.body;
+  const no = parseInt(missionNo);
+  if (!no || no < 1 || no > 3) {
+    return res.status(400).json({ success: false, message: 'missionNo は 1〜3 で指定してください' });
+  }
+
+  // 固定テスト送信先
+  const TEST_CHANNEL_URL = 'https://discord.com/channels/1176426605309083678/1293539258069417994';
+  const TEST_USER_ID     = '766666980086120470';
+
+  try {
+    // メッセージ取得
+    const messages = await getAllMissionMessages();
+    const msg = messages.find(m => m.mission_no === no);
+    if (!msg || !msg.message_content.trim()) {
+      return res.status(404).json({ success: false, message: `ミッション${no}のメッセージが未設定です` });
+    }
+
+    // ◯月◯日を翌日に置換
+    const sendDate = new Date();
+    const tomorrowLabel = getTomorrowLabel(sendDate);
+    let content = replaceDatePlaceholder(msg.message_content, sendDate);
+
+    // テスト用メンションをメッセージ先頭に追加
+    content = `<@${TEST_USER_ID}>\n【⚡ テスト送信 / ミッション${no}】\n` + content;
+
+    console.log(`🧪 ミッションテスト送信: ミッション${no} → ${TEST_CHANNEL_URL}`);
+    const result = await sendDiscordMessage(TEST_CHANNEL_URL, content);
+
+    if (result.success) {
+      console.log(`✅ ミッションテスト送信成功: ミッション${no}`);
+      res.json({
+        success: true,
+        message: `ミッション${no}のテスト送信が完了しました`,
+        missionNo: no,
+        channelUrl: TEST_CHANNEL_URL,
+        tomorrowLabel
+      });
+    } else {
+      console.error(`❌ ミッションテスト送信失敗: ${result.error}`);
+      res.status(500).json({ success: false, message: 'Discord送信に失敗しました', error: result.error });
+    }
+  } catch (error) {
+    console.error('ミッションテスト送信エラー:', error);
+    res.status(500).json({ success: false, message: 'テスト送信でエラーが発生しました', error: error.message });
   }
 });
 

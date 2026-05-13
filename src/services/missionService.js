@@ -128,6 +128,8 @@ async function processMissionAutoSend() {
 module.exports = {
   sendMission1,
   sendMissionN,
-  processMissionAutoSend
+  processMissionAutoSend,
+  replaceDatePlaceholder,
+  getTomorrowLabel
 };
 

@@ -213,6 +213,74 @@
 
     .empty-state { text-align: center; padding: 50px 20px; color: #999; font-size: 15px; }
 
+    /* テスト送信 */
+    .test-send-card {
+      background: #fffdf0;
+      border: 2px solid #ffc107;
+      border-radius: 10px;
+      padding: 24px 28px;
+      margin-bottom: 28px;
+    }
+    .test-send-card h2 {
+      font-size: 17px;
+      color: #856404;
+      margin-bottom: 6px;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+    .test-send-desc {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 18px;
+      line-height: 1.6;
+    }
+    .test-send-desc code {
+      background: #f0f0f0;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+    .test-send-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .test-mission-btns {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn-test {
+      padding: 9px 22px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s, transform .1s;
+      white-space: nowrap;
+    }
+    .btn-test:active { transform: scale(.97); }
+    .btn-test:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-test-1 { background: #667eea; color: white; }
+    .btn-test-1:hover:not(:disabled) { background: #5568d3; }
+    .btn-test-2 { background: #28a745; color: white; }
+    .btn-test-2:hover:not(:disabled) { background: #218838; }
+    .btn-test-3 { background: #fd7e14; color: white; }
+    .btn-test-3:hover:not(:disabled) { background: #e8690a; }
+    .test-send-info {
+      font-size: 12px;
+      color: #888;
+      padding: 8px 14px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      line-height: 1.7;
+      flex: 1;
+      min-width: 200px;
+    }
+    .test-send-info span { font-weight: 600; color: #555; }
+
     /* トースト通知 */
     #toast {
       position: fixed;
@@ -260,6 +328,26 @@
     <span class="toggle-status-text <%= missionEnabled ? 'on' : 'off' %>" id="toggleStatusText">
       <%= missionEnabled ? '✅ ON（毎日15時に自動送信）' : '⏸️ OFF（自動送信を停止中）' %>
     </span>
+  </div>
+
+  <!-- テスト送信 -->
+  <div class="test-send-card">
+    <h2>⚡ テスト送信</h2>
+    <div class="test-send-desc">
+      固定のテスト送信先（<code>https://discord.com/channels/1176426605309083678/1293539258069417994</code>）に送信します。<br>
+      DB記録はされません。<code>◯月◯日</code> の置換も実際の送信と同様に動作します。
+    </div>
+    <div class="test-send-row">
+      <div class="test-mission-btns">
+        <button class="btn-test btn-test-1" onclick="testSendMission(1)">🧪 ミッション1 テスト</button>
+        <button class="btn-test btn-test-2" onclick="testSendMission(2)">🧪 ミッション2 テスト</button>
+        <button class="btn-test btn-test-3" onclick="testSendMission(3)">🧪 ミッション3 テスト</button>
+      </div>
+      <div class="test-send-info">
+        <span>送信先チャンネル：</span> 1293539258069417994<br>
+        <span>メンション先：</span> &lt;@766666980086120470&gt;
+      </div>
+    </div>
   </div>
 
   <!-- メッセージ編集 -->
@@ -424,6 +512,33 @@
     t.className = `show ${type}`;
     clearTimeout(t._timer);
     t._timer = setTimeout(() => { t.className = ''; }, 3000);
+  }
+
+  // ========================================
+  // テスト送信
+  // ========================================
+  async function testSendMission(no) {
+    const btns = document.querySelectorAll('.btn-test');
+    btns.forEach(b => b.disabled = true);
+    showToast(`⏳ ミッション${no} テスト送信中...`, 'success');
+    try {
+      const res  = await fetch('/api/mission/test-send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ missionNo: no })
+      });
+      const data = await res.json();
+      if (data.success) {
+        const dateInfo = data.tomorrowLabel ? `（◯月◯日 → ${data.tomorrowLabel}）` : '';
+        showToast(`✅ ミッション${no} テスト送信完了 ${dateInfo}`);
+      } else {
+        showToast('❌ 送信失敗: ' + (data.message || data.error), 'error');
+      }
+    } catch(e) {
+      showToast('通信エラーが発生しました', 'error');
+    } finally {
+      btns.forEach(b => b.disabled = false);
+    }
   }
 
   // ========================================
