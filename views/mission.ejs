@@ -493,6 +493,7 @@
             <tr>
               <th>氏名</th>
               <th>学籍番号</th>
+              <th>プラン</th>
               <th>ミッション1<br><span style="font-weight:400;font-size:11px;">送付日 / 完了 / リマインド</span></th>
               <th>ミッション2<br><span style="font-weight:400;font-size:11px;">送付日 / 完了 / リマインド</span></th>
               <th>ミッション3<br><span style="font-weight:400;font-size:11px;">送付日 / 完了 / リマインド</span></th>
@@ -523,6 +524,23 @@
               <!-- 学籍番号 -->
               <td style="color:#888;"><span class="cell-sid"><%= student.studentId %></span></td>
 
+              <!-- プラン -->
+              <%
+                const planName = (m && m.plan_type) ? m.plan_type : (student.planType || '');
+                const isEntry  = planName === 'エントリープラン';
+              %>
+              <td>
+                <% if (planName) { %>
+                  <span style="display:inline-block;padding:3px 8px;border-radius:10px;font-size:11px;font-weight:700;
+                    background:<%= isEntry ? '#fff3e0' : '#e3f0ff' %>;
+                    color:<%= isEntry ? '#e65100' : '#1565c0' %>;">
+                    <%= planName %>
+                  </span>
+                <% } else { %>
+                  <span style="color:#ccc;font-size:11px;">-</span>
+                <% } %>
+              </td>
+
               <!-- ミッション1〜3 ループ -->
               <% [1, 2, 3].forEach(function(no) {
                 const sentKey      = 'mission' + no + '_sent_at';
@@ -533,14 +551,25 @@
                 const isCompleted = m && m[completedKey];
                 const isReminded  = m && m[remindedKey];
                 const prevDone    = no === 1 ? true : (m && m[prevCompKey]);
+                // エントリープランはミッション2をスキップ
+                const isSkipped   = isEntry && no === 2;
               %>
               <td>
+                <% if (isSkipped) { %>
+                  <!-- エントリープラン: ミッション2スキップ表示 -->
+                  <div class="mission-cell">
+                    <span style="display:inline-block;padding:3px 8px;border-radius:8px;
+                      background:#f5f5f5;color:#aaa;font-size:11px;font-weight:600;">スキップ</span>
+                  </div>
+                <% } else { %>
                 <div class="mission-cell">
                   <!-- 送付日 or ステータス -->
                   <span class="mission-date <%= isSent ? '' : 'not-sent' %>">
                     <% if (isSent) { %>
                       <%= formatDateTime(new Date(m[sentKey])).substring(0, 7) %>
-                    <% } else if (no > 1 && prevDone) { %>
+                    <% } else if (no === 3 && isEntry && m && m.mission1_completed) { %>
+                      ⏳ 翌日15時送信予定
+                    <% } else if (no > 1 && !isEntry && prevDone) { %>
                       ⏳ 翌日15時送信予定
                     <% } else { %>
                       未送信
@@ -566,6 +595,7 @@
                     <span style="font-size:11px;color:#ccc;">-</span>
                   <% } %>
                 </div>
+                <% } %>
               </td>
               <% }); %>
 
@@ -573,7 +603,7 @@
               <td>
                 <% if (!m || !m.mission1_sent_at) { %>
                   <button class="btn-start"
-                    onclick="startMission('<%= student.studentId %>', '<%= student.studentName.replace(/'/g, "\\'") %>', '<%= student.discordChannelUrl %>')"
+                    onclick="startMission('<%= student.studentId %>', '<%= student.studentName.replace(/'/g, "\\'") %>', '<%= student.discordChannelUrl %>', '<%= (student.planType || '').replace(/'/g, "\\'") %>')"
                     <%= !student.discordChannelUrl ? 'disabled title="DiscordチャンネルURLが未設定です"' : '' %>>
                     ▶ ミッション開始
                   </button>
@@ -586,7 +616,7 @@
                   </span>
                   <br>
                   <button class="btn-restart"
-                    onclick="restartMission('<%= student.studentId %>', '<%= student.studentName.replace(/'/g, "\\'") %>', '<%= student.discordChannelUrl %>')">
+                    onclick="restartMission('<%= student.studentId %>', '<%= student.studentName.replace(/'/g, "\\'") %>', '<%= student.discordChannelUrl %>', '<%= (student.planType || '').replace(/'/g, "\\'") %>')">
                     🔁 再開始
                   </button>
                 <% } %>
@@ -759,13 +789,15 @@
   // ========================================
   // ミッション開始（ミッション1送信）
   // ========================================
-  async function startMission(studentId, studentName, discordChannelUrl) {
-    if (!confirm(`${studentName} さんのミッションを開始しますか？\nミッション1のメッセージを送信します。`)) return;
+  async function startMission(studentId, studentName, discordChannelUrl, planType) {
+    const isEntry = planType === 'エントリープラン';
+    const planNote = isEntry ? '\n※エントリープランのためミッション1完了後はミッション3へ進みます' : '';
+    if (!confirm(`${studentName} さんのミッションを開始しますか？\nミッション1のメッセージを送信します。${planNote}`)) return;
     try {
       const res  = await fetch('/api/mission/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentId, studentName, discordChannelUrl })
+        body: JSON.stringify({ studentId, studentName, discordChannelUrl, planType })
       });
       const data = await res.json();
       if (data.success) {
@@ -782,9 +814,11 @@
   // ========================================
   // ミッション再開始
   // ========================================
-  async function restartMission(studentId, studentName, discordChannelUrl) {
-    if (!confirm(`${studentName} さんのミッションを最初からやり直しますか？\n現在の進捗はリセットされ、ミッション1を再送信します。`)) return;
-    await startMission(studentId, studentName, discordChannelUrl);
+  async function restartMission(studentId, studentName, discordChannelUrl, planType) {
+    const isEntry = planType === 'エントリープラン';
+    const planNote = isEntry ? '\n※エントリープランのためミッション1完了後はミッション3へ進みます' : '';
+    if (!confirm(`${studentName} さんのミッションを最初からやり直しますか？\n現在の進捗はリセットされ、ミッション1を再送信します。${planNote}`)) return;
+    await startMission(studentId, studentName, discordChannelUrl, planType);
   }
 
   // ========================================

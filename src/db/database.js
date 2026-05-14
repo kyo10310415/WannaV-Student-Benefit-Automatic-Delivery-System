@@ -264,15 +264,16 @@ async function getStudentMission(studentId) {
 }
 
 // ミッション開始（ミッション1送付日を記録）
-async function startMission(studentId, studentName, discordChannelUrl) {
+async function startMission(studentId, studentName, discordChannelUrl, planType) {
   const client = await pool.connect();
   try {
     const result = await client.query(
-      `INSERT INTO student_missions (student_id, student_name, discord_channel_url, mission1_sent_at, updated_at)
-       VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `INSERT INTO student_missions (student_id, student_name, discord_channel_url, plan_type, mission1_sent_at, updated_at)
+       VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
        ON CONFLICT (student_id) DO UPDATE SET
          student_name = EXCLUDED.student_name,
          discord_channel_url = EXCLUDED.discord_channel_url,
+         plan_type = EXCLUDED.plan_type,
          mission1_sent_at = CURRENT_TIMESTAMP,
          mission1_completed = FALSE,
          mission1_completed_at = NULL,
@@ -282,9 +283,12 @@ async function startMission(studentId, studentName, discordChannelUrl) {
          mission3_sent_at = NULL,
          mission3_completed = FALSE,
          mission3_completed_at = NULL,
+         mission1_reminded_at = NULL,
+         mission2_reminded_at = NULL,
+         mission3_reminded_at = NULL,
          updated_at = CURRENT_TIMESTAMP
        RETURNING *`,
-      [studentId, studentName, discordChannelUrl]
+      [studentId, studentName, discordChannelUrl, planType || null]
     );
     return result.rows[0];
   } finally {
@@ -328,21 +332,41 @@ async function setMissionSentAt(studentId, missionNo) {
   }
 }
 
-// ミッション2/3の自動送信対象を取得
-// 「前ミッション完了済み」かつ「完了日の翌日15時以降」かつ「次ミッション未送信」の生徒
+// ミッション2/3の自動送信対象を取得（通常プラン用）
+// 「前ミッション完了済み」かつ「完了日の翌日以降」かつ「次ミッション未送信」の生徒
 async function getMissionAutoSendTargets(missionNo) {
   const client = await pool.connect();
   try {
     const prevNo = missionNo - 1;
-    // 前ミッション完了日の翌日15時（JST = UTC+9 → 翌日06:00 UTC）以降かつ次ミッション未送信
     const result = await client.query(
       `SELECT * FROM student_missions
        WHERE mission${prevNo}_completed = TRUE
          AND mission${prevNo}_completed_at IS NOT NULL
          AND mission${missionNo}_sent_at IS NULL
          AND (mission${prevNo}_completed_at AT TIME ZONE 'Asia/Tokyo' + INTERVAL '1 day')::DATE
-             <= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Tokyo')::DATE`
-      ,
+             <= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Tokyo')::DATE`,
+      []
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+// ミッション3の自動送信対象を取得（エントリープラン用）
+// ミッション2をスキップするため「ミッション1完了済み・ミッション2未送信・ミッション3未送信」の生徒
+async function getMissionAutoSendTargetsForEntry() {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `SELECT * FROM student_missions
+       WHERE plan_type = 'エントリープラン'
+         AND mission1_completed = TRUE
+         AND mission1_completed_at IS NOT NULL
+         AND mission2_sent_at IS NULL
+         AND mission3_sent_at IS NULL
+         AND (mission1_completed_at AT TIME ZONE 'Asia/Tokyo' + INTERVAL '1 day')::DATE
+             <= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Tokyo')::DATE`,
       []
     );
     return result.rows;
@@ -439,6 +463,7 @@ module.exports = {
   setMissionCompleted,
   setMissionSentAt,
   getMissionAutoSendTargets,
+  getMissionAutoSendTargetsForEntry,
   // リマインド関連
   getAllReminderMessages,
   updateReminderMessage,

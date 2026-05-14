@@ -254,6 +254,16 @@ async function getMissionStudentList() {
       }
     }
 
+    // 学籍番号 → プラン種別 のマップを作成（❶RAW_生徒様情報 C列）
+    const planTypeMap = {};
+    for (const row of studentInfoData) {
+      const studentId = (row[1] || '').trim(); // B列: 学籍番号
+      const planType  = (row[2] || '').trim(); // C列: プラン種別
+      if (studentId) {
+        planTypeMap[studentId] = planType;
+      }
+    }
+
     // オンボーディングシートの生徒一覧を作成（B列: 氏名 の降順）
     const students = [];
     for (const row of onboardingData) {
@@ -263,7 +273,8 @@ async function getMissionStudentList() {
         students.push({
           studentId,
           studentName,
-          discordChannelUrl: channelUrlMap[studentId] || ''
+          discordChannelUrl: channelUrlMap[studentId] || '',
+          planType: planTypeMap[studentId] || ''
         });
       }
     }

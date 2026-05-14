@@ -104,6 +104,9 @@ ALTER TABLE student_missions ADD COLUMN IF NOT EXISTS mission1_reminded_at TIMES
 ALTER TABLE student_missions ADD COLUMN IF NOT EXISTS mission2_reminded_at TIMESTAMP;
 ALTER TABLE student_missions ADD COLUMN IF NOT EXISTS mission3_reminded_at TIMESTAMP;
 
+-- student_missions にプラン種別カラムを追加
+ALTER TABLE student_missions ADD COLUMN IF NOT EXISTS plan_type VARCHAR(50);
+
 -- リマインドメッセージ管理テーブル（ミッション1〜3それぞれのリマインド文）
 CREATE TABLE IF NOT EXISTS reminder_messages (
   id SERIAL PRIMARY KEY,
