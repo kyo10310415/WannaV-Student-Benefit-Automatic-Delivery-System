@@ -12,7 +12,7 @@ const { initializeDatabase, getAllBenefitHistory, getSendLogs, saveBenefitImage,
 const { initializeGoogleSheets, getMessageForBenefit, getMissionStudentList } = require('./services/googleSheets');
 const { initializeDiscordBot, sendDiscordMessage } = require('./services/discord');
 const { processAllBenefits } = require('./services/benefitService');
-const { sendMission1, sendMissionN, processMissionAutoSend, processReminderAutoSend, replaceDatePlaceholder, getTomorrowLabel } = require('./services/missionService');
+const { sendMission1, sendMissionN, processMissionAutoSend, processReminderAutoSend, replaceDatePlaceholder, getTomorrowLabel, isEntryPlan } = require('./services/missionService');
 const { formatDateTime } = require('./utils/dateUtils');
 const ssoAuth = require('../middleware/sso-auth-middleware');
 
@@ -361,12 +361,12 @@ app.post('/api/mission/reminder-message', async (req, res) => {
 
 // API: ミッション開始（ミッション1送信）
 app.post('/api/mission/start', async (req, res) => {
-  const { studentId, studentName, discordChannelUrl } = req.body;
+  const { studentId, studentName, discordChannelUrl, planType } = req.body;
   if (!studentId || !studentName || !discordChannelUrl) {
     return res.status(400).json({ success: false, message: '必須パラメータが不足しています' });
   }
   try {
-    const result = await sendMission1(studentId, studentName, discordChannelUrl);
+    const result = await sendMission1(studentId, studentName, discordChannelUrl, planType);
     res.json(result);
   } catch (error) {
     console.error('ミッション開始エラー:', error);
