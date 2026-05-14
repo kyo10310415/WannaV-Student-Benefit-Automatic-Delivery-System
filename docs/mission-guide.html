@@ -460,9 +460,98 @@
       .tl-line { display: none; }
       .slide-title { font-size: 24px; }
     }
+
+    /* ========== PDFダウンロードボタン ========== */
+    .pdf-btn {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 200;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      padding: 9px 18px;
+      border-radius: 24px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 3px 12px rgba(102,126,234,.45);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      transition: opacity .2s, transform .2s;
+      font-family: inherit;
+    }
+    .pdf-btn:hover { opacity: .88; transform: translateY(-1px); }
+    .pdf-btn:active { transform: translateY(0); }
+
+    /* ========== 印刷 / PDF出力用 ========== */
+    @media print {
+      /* 全体リセット */
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      html, body {
+        width: 297mm;
+        height: auto;
+        overflow: visible;
+        background: white;
+      }
+
+      /* ナビ・ドット・ヒント・PDFボタンは非表示 */
+      .nav, .dots, .key-hint, .pdf-btn { display: none !important; }
+
+      /* スライドコンテナをブロックレイアウトに切り替え */
+      .slide-container {
+        width: 100%;
+        height: auto;
+        position: static;
+        overflow: visible;
+      }
+
+      /* 各スライドを1ページに収める */
+      .slide {
+        position: relative !important;
+        display: flex !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        transform: none !important;
+        width: 100%;
+        min-height: 190mm;
+        height: auto;
+        padding: 30mm 25mm 22mm;
+        page-break-after: always;
+        break-after: page;
+        box-sizing: border-box;
+        overflow: hidden;
+      }
+      .slide:last-child {
+        page-break-after: avoid;
+        break-after: avoid;
+      }
+
+      /* カバー・エンドスライドのグラデーション背景を維持 */
+      .slide-cover, .slide-end {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+      }
+
+      /* フォントサイズ調整 */
+      .cover-title  { font-size: 38px; }
+      .slide-title  { font-size: 26px; }
+      .toc-title    { font-size: 22px; }
+      .end-title    { font-size: 32px; }
+
+      /* テーブルは改ページしない */
+      .info-table { page-break-inside: avoid; break-inside: avoid; }
+
+      /* 2カラム・グリッドはそのまま維持（A4横向きで余裕あり） */
+    }
   </style>
 </head>
 <body>
+
+<!-- PDFダウンロードボタン -->
+<button class="pdf-btn" onclick="downloadPDF()">
+  <span>📄</span><span>PDFで保存</span>
+</button>
 
 <div class="slide-container" id="slideContainer">
 
@@ -1212,6 +1301,15 @@
     const diff = touchStartX - e.changedTouches[0].clientX;
     if (Math.abs(diff) > 50) { diff > 0 ? nextSlide() : prevSlide(); }
   });
+
+  // PDFダウンロード
+  function downloadPDF() {
+    // 印刷ダイアログを開く前に「PDFとして保存」を選んでください
+    const orig = document.title;
+    document.title = 'ミッション管理機能_使い方ガイド';
+    window.print();
+    document.title = orig;
+  }
 </script>
 </body>
 </html>
