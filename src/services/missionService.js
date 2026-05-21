@@ -1,5 +1,5 @@
 const { sendDiscordMessage } = require('./discord');
-const { getMission1AutoSendTargets } = require('./googleSheets');
+const { getMission1AutoSendTargets, getMissionCompletedStudentIds } = require('./googleSheets');
 const {
   getAllMissionMessages,
   getAllStudentMissions,
@@ -200,6 +200,63 @@ async function processReminderAutoSend() {
 }
 
 /**
+ * ミッション提出チェック自動化バッチ（毎日15時JST実行、自動送信より先に実行）
+ * スプレッドシートの提出記録とDBを照合し、未完了のミッションに自動でチェックを入れる
+ * - ミッション1: 提出確認シートの「ミッション1」D列に学籍番号があればチェック
+ * - ミッション2: 提出確認シートの「ミッション2」C列に学籍番号があればチェック
+ * - ミッション3: 提出確認シートの「ミッション3」C列に学籍番号があればチェック
+ * ※ミッションが開始状態（sent_atあり）のもののみ対象
+ */
+async function processMissionCompletionCheck() {
+  console.log('\n✅ ミッション提出チェック自動化バッチ開始');
+  const { getAllStudentMissions, setMissionCompleted } = require('../db/database');
+  let checked = 0;
+  let skipped = 0;
+
+  // DB上の全ミッション進捗を取得
+  const allMissions = await getAllStudentMissions();
+
+  for (const missionNo of [1, 2, 3]) {
+    const sentKey      = `mission${missionNo}_sent_at`;
+    const completedKey = `mission${missionNo}_completed`;
+
+    // このミッション番号が送信済みかつ未完了のレコードを抽出
+    const targets = allMissions.filter(m => m[sentKey] && !m[completedKey]);
+    if (targets.length === 0) {
+      console.log(`  ミッション${missionNo}: 対象なし`);
+      continue;
+    }
+
+    // スプレッドシートから提出済み学籍番号セットを取得
+    const submittedIds = await getMissionCompletedStudentIds(missionNo);
+    if (submittedIds.size === 0) {
+      console.log(`  ミッション${missionNo}: スプレッドシートに提出記録なし`);
+      continue;
+    }
+
+    console.log(`  ミッション${missionNo}: 未完了 ${targets.length}名 / 提出済み ${submittedIds.size}件`);
+
+    for (const record of targets) {
+      if (submittedIds.has(record.student_id)) {
+        try {
+          await setMissionCompleted(record.student_id, missionNo, true);
+          checked++;
+          console.log(`  ✅ 自動チェック: ${record.student_name}（${record.student_id}）ミッション${missionNo}`);
+        } catch (error) {
+          console.error(`  ❌ チェック更新エラー: ${record.student_name} ミッション${missionNo}:`, error.message);
+        }
+        await new Promise(r => setTimeout(r, 200));
+      } else {
+        skipped++;
+      }
+    }
+  }
+
+  console.log(`✅ ミッション提出チェック完了: 自動チェック ${checked}件 / 未提出スキップ ${skipped}件\n`);
+  return { checked, skipped };
+}
+
+/**
  * ミッション1の自動送信バッチ（毎日15時JST実行）
  * 条件: B列(学籍番号)あり・M列(チャンネルURL)あり・D列=レッスン準備中・AK列=FALSE(未開始)
  * かつ、DB上でそのstudentIdのmission1_sent_atがNULL（まだ送信していない）
@@ -256,6 +313,7 @@ async function processMission1AutoSend() {
 module.exports = {
   sendMission1,
   sendMissionN,
+  processMissionCompletionCheck,
   processMission1AutoSend,
   processMissionAutoSend,
   processReminderAutoSend,

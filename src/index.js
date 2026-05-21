@@ -12,7 +12,7 @@ const { initializeDatabase, getAllBenefitHistory, getSendLogs, saveBenefitImage,
 const { initializeGoogleSheets, getMessageForBenefit, getMissionStudentList } = require('./services/googleSheets');
 const { initializeDiscordBot, sendDiscordMessage } = require('./services/discord');
 const { processAllBenefits } = require('./services/benefitService');
-const { sendMission1, sendMissionN, processMission1AutoSend, processMissionAutoSend, processReminderAutoSend, replaceDatePlaceholder, getTomorrowLabel, isEntryPlan } = require('./services/missionService');
+const { sendMission1, sendMissionN, processMissionCompletionCheck, processMission1AutoSend, processMissionAutoSend, processReminderAutoSend, replaceDatePlaceholder, getTomorrowLabel, isEntryPlan } = require('./services/missionService');
 const { formatDateTime } = require('./utils/dateUtils');
 const ssoAuth = require('../middleware/sso-auth-middleware');
 
@@ -523,9 +523,11 @@ function setupCronJob() {
     }
     try {
       console.log(`\n🎯 ミッション定期実行開始: ${formatDateTime(new Date())}`);
-      // ミッション1自動送信（スプレッドシートの条件を満たす未送信生徒）
+      // ① 提出チェック自動化（スプレッドシートとDB照合）
+      await processMissionCompletionCheck();
+      // ② ミッション1自動送信（スプレッドシートの条件を満たす未送信生徒）
       await processMission1AutoSend();
-      // ミッション2・3自動送信（完了チェック翌日）
+      // ③ ミッション2・3自動送信（完了チェック翌日）
       await processMissionAutoSend();
       console.log(`✅ ミッション定期実行完了: ${formatDateTime(new Date())}\n`);
     } catch (error) {
