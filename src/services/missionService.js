@@ -1,4 +1,5 @@
 const { sendDiscordMessage } = require('./discord');
+const { getMission1AutoSendTargets } = require('./googleSheets');
 const {
   getAllMissionMessages,
   getAllStudentMissions,
@@ -198,9 +199,64 @@ async function processReminderAutoSend() {
   return { sent, failed };
 }
 
+/**
+ * ミッション1の自動送信バッチ（毎日15時JST実行）
+ * 条件: B列(学籍番号)あり・M列(チャンネルURL)あり・D列=レッスン準備中・AK列=FALSE(未開始)
+ * かつ、DB上でそのstudentIdのmission1_sent_atがNULL（まだ送信していない）
+ */
+async function processMission1AutoSend() {
+  console.log('\n🚀 ミッション1自動送信バッチ開始');
+  let sent = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  // スプレッドシートから対象生徒を取得
+  const targets = await getMission1AutoSendTargets();
+  console.log(`  対象候補: ${targets.length}名`);
+
+  // DB上の既送信済みを除外
+  const { getStudentMission } = require('../db/database');
+
+  for (const student of targets) {
+    try {
+      // DB確認: すでにミッション1を送信済みならスキップ
+      const existing = await getStudentMission(student.studentId);
+      if (existing && existing.mission1_sent_at) {
+        skipped++;
+        continue;
+      }
+
+      // ミッション1を送信
+      const result = await sendMission1(
+        student.studentId,
+        student.studentName,
+        student.discordChannelUrl,
+        student.planType
+      );
+
+      if (result.success) {
+        sent++;
+        console.log(`  ✅ ミッション1自動送信: ${student.studentName}（${student.studentId}）`);
+      } else {
+        failed++;
+        console.error(`  ❌ ${student.studentName}: ${result.error}`);
+      }
+    } catch (error) {
+      failed++;
+      console.error(`  ❌ ${student.studentName} エラー:`, error.message);
+    }
+    // 連続送信の負荷軽減
+    await new Promise(r => setTimeout(r, 500));
+  }
+
+  console.log(`🚀 ミッション1自動送信完了: 送信 ${sent}件 / スキップ ${skipped}件 / 失敗 ${failed}件\n`);
+  return { sent, skipped, failed };
+}
+
 module.exports = {
   sendMission1,
   sendMissionN,
+  processMission1AutoSend,
   processMissionAutoSend,
   processReminderAutoSend,
   replaceDatePlaceholder,

@@ -290,6 +290,43 @@ async function getMissionStudentList() {
   }
 }
 
+// ミッション1自動送信の対象生徒を取得（❶RAW_生徒様情報シート）
+// 条件:
+//   - B列（学籍番号）が入力済み
+//   - M列（DiscordチャンネルURL）が入力済み
+//   - D列（会員ステータス）が「レッスン準備中」
+//   - AK列（オンボーディング開始）がFALSE（空欄 or "FALSE"）
+async function getMission1AutoSendTargets() {
+  try {
+    // A列〜AK列（1〜37列）を取得
+    const data = await getSheetData(STUDENT_INFO_SPREADSHEET_ID, '❶RAW_生徒様情報!A2:AK');
+    const targets = [];
+    for (const row of data) {
+      const studentName      = (row[0]  || '').trim(); // A列: 氏名
+      const studentId        = (row[1]  || '').trim(); // B列: 学籍番号
+      const planType         = (row[2]  || '').trim(); // C列: プラン種別
+      const memberStatus     = (row[3]  || '').trim(); // D列: 会員ステータス
+      const discordChannelUrl= (row[12] || '').trim(); // M列: DiscordチャンネルURL
+      const onboardingStarted= (row[36] || '').trim(); // AK列: オンボーディング開始（FALSE or 空欄 = 未開始）
+
+      // 条件チェック
+      if (
+        studentId &&                        // B列: 学籍番号あり
+        discordChannelUrl &&                // M列: チャンネルURLあり
+        memberStatus === 'レッスン準備中' && // D列: レッスン準備中
+        onboardingStarted !== 'TRUE'        // AK列: TRUEでない（空欄 or FALSE）
+      ) {
+        targets.push({ studentId, studentName, planType, discordChannelUrl });
+      }
+    }
+    console.log(`✅ ミッション1自動送信対象: ${targets.length}名`);
+    return targets;
+  } catch (error) {
+    console.error('❌ ミッション1自動送信対象取得エラー:', error.message);
+    return [];
+  }
+}
+
 module.exports = {
   initializeGoogleSheets,
   getStudentInfo,
@@ -298,6 +335,7 @@ module.exports = {
   getMessageForBenefit,
   getPaymentStatus,
   getMissionStudentList,
+  getMission1AutoSendTargets,
   STUDENT_INFO_SPREADSHEET_ID,
   BENEFIT_MESSAGE_SPREADSHEET_ID
 };
