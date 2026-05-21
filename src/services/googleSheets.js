@@ -45,6 +45,8 @@ async function getSheetData(spreadsheetId, range) {
 const STUDENT_INFO_SPREADSHEET_ID = '1iqrAhNjW8jTvobkur5N_9r9uUWFHCKqrhxM72X5z-iM';
 // 特典メッセージスプレッドシートのID
 const BENEFIT_MESSAGE_SPREADSHEET_ID = '1--uAzzz3QD8EOtCFYkMSYVnuK8KDRbPeJ38Y71ItE8Q';
+// ミッション提出確認スプレッドシートのID
+const MISSION_COMPLETION_SPREADSHEET_ID = '1HDmyciJY0seTN_Qb5OBLhsztgLEUo8gSK_gIxL3ZUZk';
 
 // 生徒情報を取得（❶RAW_生徒様情報シート）
 async function getStudentInfo() {
@@ -290,6 +292,33 @@ async function getMissionStudentList() {
   }
 }
 
+// ミッション提出済み学籍番号のセットを取得（ミッション提出確認スプレッドシート）
+// ミッション1: D列（index=3）に学籍番号
+// ミッション2: C列（index=2）に学籍番号
+// ミッション3: C列（index=2）に学籍番号
+async function getMissionCompletedStudentIds(missionNo) {
+  try {
+    const sheetName = `ミッション${missionNo}`;
+    // ミッション1はD列(index=3)、ミッション2・3はC列(index=2)
+    const colIndex = missionNo === 1 ? 3 : 2;
+    // 十分な列まで取得（ミッション1はA〜D、ミッション2・3はA〜C）
+    const endCol   = missionNo === 1 ? 'D' : 'C';
+    const range    = `${sheetName}!A2:${endCol}`;
+    const data     = await getSheetData(MISSION_COMPLETION_SPREADSHEET_ID, range);
+
+    const ids = new Set();
+    for (const row of data) {
+      const studentId = (row[colIndex] || '').trim();
+      if (studentId) ids.add(studentId);
+    }
+    console.log(`✅ ミッション${missionNo}提出済み: ${ids.size}件`);
+    return ids;
+  } catch (error) {
+    console.error(`❌ ミッション${missionNo}提出確認取得エラー:`, error.message);
+    return new Set();
+  }
+}
+
 // ミッション1自動送信の対象生徒を取得（❶RAW_生徒様情報シート）
 // 条件:
 //   - B列（学籍番号）が入力済み
@@ -336,6 +365,8 @@ module.exports = {
   getPaymentStatus,
   getMissionStudentList,
   getMission1AutoSendTargets,
+  getMissionCompletedStudentIds,
   STUDENT_INFO_SPREADSHEET_ID,
-  BENEFIT_MESSAGE_SPREADSHEET_ID
+  BENEFIT_MESSAGE_SPREADSHEET_ID,
+  MISSION_COMPLETION_SPREADSHEET_ID
 };
