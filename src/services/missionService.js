@@ -1,3 +1,4 @@
+const https = require('https');
 const { sendDiscordMessage } = require('./discord');
 const { getMission1AutoSendTargets, getMissionCompletedStudentIds } = require('./googleSheets');
 const {
@@ -148,15 +149,52 @@ async function processMissionAutoSend() {
 }
 
 /**
- * 毎日15時（JST）に実行するリマインド自動送信バッチ
+ * Slack Webhook へメッセージを POST する
+ * @param {string} webhookUrl - Slack Incoming Webhook URL
+ * @param {object} payload    - { text: string } 等の Slack メッセージ payload
+ */
+function postToSlack(webhookUrl, payload) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify(payload);
+    const url = new URL(webhookUrl);
+    const options = {
+      hostname: url.hostname,
+      path: url.pathname,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body)
+      }
+    };
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve({ success: true });
+        } else {
+          reject(new Error(`Slack Webhook failed: ${res.statusCode} ${data}`));
+        }
+      });
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
+
+/**
+ * 毎日15時30分（JST）に実行するリマインド自動送信バッチ
  * - ミッション送付日から3日経過しても完了チェックがない生徒にリマインドを送信
  * - ミッション1〜3それぞれ対象
  * - リマインドは1回のみ（reminded_at が NULL の場合のみ送信）
+ * - 全送信完了後、送信者一覧を Slack Webhook へ通知
  */
 async function processReminderAutoSend() {
   console.log('\n🔔 リマインド自動送信バッチ開始');
   let sent = 0;
   let failed = 0;
+  const sentList = []; // Slack通知用: 送信成功した生徒の一覧
 
   // リマインドメッセージを一括取得
   const reminderMessages = await getAllReminderMessages();
@@ -182,6 +220,15 @@ async function processReminderAutoSend() {
           await setMissionRemindedAt(record.student_id, missionNo);
           sent++;
           console.log(`  ✅ リマインド送信完了: ${record.student_name} ミッション${missionNo}`);
+
+          // Slack通知用リストに追加
+          const sentAtKey = `mission${missionNo}_sent_at`;
+          sentList.push({
+            studentName:      record.student_name,
+            discordChannelUrl: record.discord_channel_url,
+            missionNo,
+            missionSentAt:    record[sentAtKey] || null
+          });
         } else {
           failed++;
           console.error(`  ❌ リマインド送信失敗: ${record.student_name} ミッション${missionNo}: ${result.error}`);
@@ -196,6 +243,41 @@ async function processReminderAutoSend() {
   }
 
   console.log(`🔔 リマインド自動送信完了: 成功 ${sent}件 / 失敗 ${failed}件\n`);
+
+  // ─── Slack Webhook 通知 ───
+  const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
+  if (!SLACK_WEBHOOK_URL) {
+    console.warn('📣 SLACK_WEBHOOK_URL が未設定のためSlack通知をスキップ');
+    return { sent, failed };
+  }
+  if (sentList.length > 0) {
+    try {
+      // 送信者一覧を整形
+      const lines = sentList.map((item, i) => {
+        // ミッション送付日を JST の「YYYY/MM/DD」形式で表示
+        let sentAtStr = '不明';
+        if (item.missionSentAt) {
+          const d = new Date(item.missionSentAt);
+          const jst = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+          sentAtStr = `${jst.getFullYear()}/${String(jst.getMonth() + 1).padStart(2, '0')}/${String(jst.getDate()).padStart(2, '0')}`;
+        }
+        return `${i + 1}. *${item.studentName}*\n   • Discordリンク: ${item.discordChannelUrl}\n   • ミッション: ミッション${item.missionNo}\n   • ミッション送付日: ${sentAtStr}`;
+      });
+
+      const slackText =
+        `:bell: *リマインド送信完了のお知らせ* :bell:\n` +
+        `本日（15:30）のリマインドを *${sentList.length}名* に送信しました。\n\n` +
+        lines.join('\n\n');
+
+      await postToSlack(SLACK_WEBHOOK_URL, { text: slackText });
+      console.log(`📣 Slack通知送信完了: ${sentList.length}名分`);
+    } catch (slackError) {
+      console.error('📣 Slack通知送信エラー:', slackError.message);
+    }
+  } else {
+    console.log('📣 リマインド送信対象者なし → Slack通知スキップ');
+  }
+
   return { sent, failed };
 }
 
