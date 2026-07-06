@@ -123,3 +123,18 @@ COMMENT ON TABLE reminder_messages IS 'ミッション1〜3のリマインドメ
 COMMENT ON COLUMN student_missions.mission1_reminded_at IS 'ミッション1リマインド送信日時（NULLなら未送信）';
 COMMENT ON COLUMN student_missions.mission2_reminded_at IS 'ミッション2リマインド送信日時（NULLなら未送信）';
 COMMENT ON COLUMN student_missions.mission3_reminded_at IS 'ミッション3リマインド送信日時（NULLなら未送信）';
+
+-- システム設定テーブル（サーバー再起動後も状態を保持するためDBに永続化）
+CREATE TABLE IF NOT EXISTS system_settings (
+  key   VARCHAR(100) PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+-- 初期データ: ミッション機能ON/OFFのデフォルト値（存在しない場合のみ挿入）
+INSERT INTO system_settings (key, value)
+  VALUES ('mission_enabled', 'false')
+  ON CONFLICT (key) DO NOTHING;
+
+COMMENT ON TABLE system_settings IS 'サーバー再起動後も保持したいシステム設定値を管理するテーブル（key-value形式）';
+COMMENT ON COLUMN system_settings.key IS '設定キー（例: mission_enabled）';
+COMMENT ON COLUMN system_settings.value IS '設定値（文字列）';

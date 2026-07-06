@@ -7,7 +7,8 @@ require('dotenv').config();
 
 const { initializeDatabase, getAllBenefitHistory, getSendLogs, saveBenefitImage, getBenefitImage, getAllBenefitImages, deleteBenefitImage,
   getAllMissionMessages, updateMissionMessage, getAllStudentMissions, getStudentMission, startMission, setMissionCompleted, setMissionSentAt,
-  getAllReminderMessages, updateReminderMessage
+  getAllReminderMessages, updateReminderMessage,
+  getSetting, setSetting
 } = require('./db/database');
 const { initializeGoogleSheets, getMessageForBenefit, getMissionStudentList } = require('./services/googleSheets');
 const { initializeDiscordBot, sendDiscordMessage } = require('./services/discord');
@@ -58,8 +59,8 @@ let isProcessing = false;
 let lastRunTime = null;
 let lastRunResult = null;
 
-// ミッション機能ON/OFF（メモリ上で保持、再起動時は環境変数またはデフォルトOFF）
-let missionEnabled = process.env.ENABLE_MISSION === 'true';
+// ミッション機能ON/OFF（DBに永続化。起動時にDBから復元するためまず false で初期化）
+let missionEnabled = false;
 
 // ルート: トップページ（管理画面）
 app.get('/', async (req, res) => {
@@ -323,10 +324,18 @@ app.get('/mission', async (req, res) => {
 });
 
 // API: ミッション機能ON/OFFトグル
-app.post('/api/mission/toggle', (req, res) => {
-  missionEnabled = !missionEnabled;
-  console.log(`🎯 ミッション機能: ${missionEnabled ? 'ON' : 'OFF'}`);
-  res.json({ success: true, missionEnabled });
+app.post('/api/mission/toggle', async (req, res) => {
+  try {
+    missionEnabled = !missionEnabled;
+    await setSetting('mission_enabled', missionEnabled ? 'true' : 'false');
+    console.log(`🎯 ミッション機能: ${missionEnabled ? 'ON' : 'OFF'}（DB保存済み）`);
+    res.json({ success: true, missionEnabled });
+  } catch (error) {
+    console.error('ミッション機能トグルエラー:', error);
+    // DB保存失敗時はメモリ上の変更を元に戻す
+    missionEnabled = !missionEnabled;
+    res.status(500).json({ success: false, message: 'DB保存に失敗しました: ' + error.message });
+  }
 });
 
 // API: ミッションメッセージ保存
@@ -479,6 +488,12 @@ async function initialize() {
     console.log('💬 Discord Bot初期化中...');
     await initializeDiscordBot();
     
+    // ミッション機能ON/OFF状態をDBから復元
+    console.log('⚙️  システム設定復元中...');
+    const savedMissionEnabled = await getSetting('mission_enabled', 'false');
+    missionEnabled = savedMissionEnabled === 'true';
+    console.log(`⚙️  ミッション機能: ${missionEnabled ? 'ON' : 'OFF'}（DB復元）`);
+
     console.log('\n✅ すべての初期化が完了しました\n');
   } catch (error) {
     console.error('\n❌ 初期化エラー:', error);
