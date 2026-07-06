@@ -468,5 +468,54 @@ module.exports = {
   getAllReminderMessages,
   updateReminderMessage,
   setMissionRemindedAt,
-  getReminderTargets
+  getReminderTargets,
+  // システム設定関連
+  getSetting,
+  setSetting
 };
+
+// ─────────────────────────────────────────────
+// システム設定 (system_settings テーブル)
+// サーバー再起動後も設定値を保持するためDBに永続化
+// ─────────────────────────────────────────────
+
+/**
+ * システム設定値を取得する
+ * @param {string} key - 設定キー
+ * @param {string} defaultValue - DBにレコードがない場合のデフォルト値
+ * @returns {Promise<string>} 設定値
+ */
+async function getSetting(key, defaultValue = null) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      'SELECT value FROM system_settings WHERE key = $1',
+      [key]
+    );
+    if (result.rows.length === 0) return defaultValue;
+    return result.rows[0].value;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * システム設定値を保存する（upsert）
+ * @param {string} key - 設定キー
+ * @param {string} value - 設定値
+ */
+async function setSetting(key, value) {
+  const client = await pool.connect();
+  try {
+    await client.query(
+      `INSERT INTO system_settings (key, value, updated_at)
+       VALUES ($1, $2, CURRENT_TIMESTAMP)
+       ON CONFLICT (key) DO UPDATE
+         SET value = EXCLUDED.value,
+             updated_at = CURRENT_TIMESTAMP`,
+      [key, String(value)]
+    );
+  } finally {
+    client.release();
+  }
+}
