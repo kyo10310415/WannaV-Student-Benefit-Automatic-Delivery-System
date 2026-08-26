@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
+  buildMissionStatsCsv,
   buildMissionMonthlyStats,
   getJstMonthKey,
   isValidMonthKey
@@ -66,4 +67,39 @@ test('データがない選択月も0件として返す', () => {
   assert.equal(result.selected.overall.sentCount, 0);
   assert.equal(result.selected.overall.achievementRate, 0);
   assert.deepEqual(result.monthly, []);
+});
+
+test('年月を列、各ミッションを行にしたCSVを古い月順で生成する', () => {
+  const stats = buildMissionMonthlyStats([
+    {
+      student_id: 'S001',
+      mission_no: 1,
+      sent_at: new Date('2026-08-01T00:00:00.000Z'),
+      completed: true
+    },
+    {
+      student_id: 'S002',
+      mission_no: 1,
+      sent_at: new Date('2026-07-01T00:00:00.000Z'),
+      completed: false
+    },
+    {
+      student_id: 'S003',
+      mission_no: 2,
+      sent_at: new Date('2026-07-02T00:00:00.000Z'),
+      completed: true
+    }
+  ]);
+
+  const csv = buildMissionStatsCsv(stats.monthly);
+
+  assert.equal(csv.charCodeAt(0), 0xFEFF);
+  assert.equal(csv, [
+    '\uFEFF項目,2026年7月,2026年8月',
+    '全体,50%,100%',
+    'ミッション1,0%,100%',
+    'ミッション2,100%,0%',
+    'ミッション3,0%,0%',
+    ''
+  ].join('\r\n'));
 });

@@ -111,7 +111,30 @@ function buildMissionMonthlyStats(historyRecords, requestedMonth) {
   };
 }
 
+function escapeCsvCell(value) {
+  const text = String(value ?? '');
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function buildMissionStatsCsv(monthlyStats) {
+  const months = [...(monthlyStats || [])]
+    .sort((a, b) => a.month.localeCompare(b.month));
+  const rows = [
+    ['項目', ...months.map(item => item.monthLabel)],
+    ['全体', ...months.map(item => `${item.overall.achievementRate}%`)],
+    ...MISSION_NUMBERS.map(missionNo => [
+      `ミッション${missionNo}`,
+      ...months.map(item => `${item.missions[missionNo].achievementRate}%`)
+    ])
+  ];
+
+  return `\uFEFF${rows
+    .map(row => row.map(escapeCsvCell).join(','))
+    .join('\r\n')}\r\n`;
+}
+
 module.exports = {
+  buildMissionStatsCsv,
   buildMissionMonthlyStats,
   getJstMonthKey,
   getMonthLabel,

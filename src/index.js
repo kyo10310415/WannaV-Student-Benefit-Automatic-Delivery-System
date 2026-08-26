@@ -15,7 +15,7 @@ const { initializeGoogleSheets, getMessageForBenefit, getMissionStudentList } = 
 const { initializeDiscordBot, sendDiscordMessage } = require('./services/discord');
 const { processAllBenefits } = require('./services/benefitService');
 const { sendMission1, sendMissionN, processMissionCompletionCheck, processMission1AutoSend, processMissionAutoSend, processReminderAutoSend, replaceDatePlaceholder, getTomorrowLabel, isEntryPlan } = require('./services/missionService');
-const { buildMissionMonthlyStats } = require('./services/missionStatsService');
+const { buildMissionMonthlyStats, buildMissionStatsCsv } = require('./services/missionStatsService');
 const { formatDateTime } = require('./utils/dateUtils');
 const { parseMissionNo } = require('./utils/validation');
 const { validateEnvironment } = require('./config/environment');
@@ -339,6 +339,28 @@ app.get('/mission', async (req, res) => {
   } catch (error) {
     console.error('ミッション管理画面エラー:', error);
     res.status(500).send('ミッション管理画面の表示に失敗しました');
+  }
+});
+
+// API: 全期間の月別ミッション達成率をCSV出力
+app.get('/api/mission/stats.csv', async (req, res) => {
+  try {
+    const missionHistory = await getAllMissionHistory();
+    const missionStats = buildMissionMonthlyStats(missionHistory);
+    const csv = buildMissionStatsCsv(missionStats.monthly);
+
+    res.set({
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': 'attachment; filename="mission-achievement-rates.csv"',
+      'Cache-Control': 'no-store'
+    });
+    res.send(csv);
+  } catch (error) {
+    console.error('ミッション達成率CSV出力エラー:', error);
+    res.status(500).json({
+      success: false,
+      message: 'ミッション達成率CSVの出力に失敗しました'
+    });
   }
 });
 

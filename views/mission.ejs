@@ -338,6 +338,32 @@
     .stat-progress-bar { height: 100%; border-radius: 8px; background: #667eea; }
     .stat-card.overall .stat-progress-bar { background: white; }
     .history-heading { margin: 4px 0 12px; color: #444; font-size: 15px; }
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 4px 0 12px;
+      flex-wrap: wrap;
+    }
+    .history-header .history-heading { margin: 0; }
+    .csv-export-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      padding: 8px 14px;
+      border: 1px solid #667eea;
+      border-radius: 7px;
+      background: #667eea;
+      color: white;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: background .2s, border-color .2s;
+    }
+    .csv-export-btn:hover { border-color: #5568d3; background: #5568d3; }
+    .csv-export-btn.disabled { border-color: #ccc; background: #ccc; cursor: not-allowed; }
     .stats-table { min-width: 720px; }
     .stats-table th { background: #545b78; text-align: center; }
     .stats-table th:first-child, .stats-table td:first-child { text-align: left; }
@@ -351,6 +377,7 @@
     @media (max-width: 520px) {
       .stats-grid { grid-template-columns: 1fr; }
       .stats-filter, .stats-filter label, .month-input { width: 100%; }
+      .history-header, .csv-export-btn { width: 100%; }
     }
 
     /* テスト送信 */
@@ -511,7 +538,16 @@
       <% }); %>
     </div>
 
-    <h3 class="history-heading">過去のデータ（全期間）</h3>
+    <div class="history-header">
+      <h3 class="history-heading">過去のデータ（全期間）</h3>
+      <% if (missionStats.monthly.length > 0) { %>
+        <a href="/api/mission/stats.csv" class="csv-export-btn" download>
+          ⬇ CSVエクスポート
+        </a>
+      <% } else { %>
+        <span class="csv-export-btn disabled" aria-disabled="true">⬇ CSVエクスポート</span>
+      <% } %>
+    </div>
     <% if (missionStats.monthly.length > 0) { %>
       <div class="table-wrap">
         <table class="stats-table">

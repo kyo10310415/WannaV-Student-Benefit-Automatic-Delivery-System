@@ -41,6 +41,8 @@ test('ミッション管理画面に年月選択・選択月結果・全期間�
   assert.match(html, /value="2026-08"/);
   assert.match(html, /2026年8月 の結果/);
   assert.match(html, /過去のデータ（全期間）/);
+  assert.match(html, /href="\/api\/mission\/stats\.csv"/);
+  assert.match(html, /CSVエクスポート/);
   assert.match(html, /2026年7月/);
   assert.match(html, />50<\/strong><span>%<\/span>/);
 });
