@@ -34,7 +34,14 @@ function initializeDiscordBot() {
         throw new Error('DISCORD_BOT_TOKENが設定されていません');
       }
 
-      discordClient.login(token);
+      discordClient.login(token).catch((error) => {
+        console.error('❌ Discord Botログインエラー:', error);
+        if (discordClient) {
+          discordClient.destroy();
+          discordClient = null;
+        }
+        reject(error);
+      });
     } catch (error) {
       console.error('❌ Discord Bot初期化エラー:', error);
       reject(error);

@@ -293,6 +293,66 @@
 
     .empty-state { text-align: center; padding: 50px 20px; color: #999; font-size: 15px; }
 
+    /* 月別達成率 */
+    .stats-toolbar {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .stats-definition { color: #666; font-size: 12px; line-height: 1.7; max-width: 760px; }
+    .stats-filter { display: flex; align-items: flex-end; gap: 8px; }
+    .stats-filter label { display: flex; flex-direction: column; gap: 5px; color: #555; font-size: 12px; font-weight: 700; }
+    .month-input {
+      min-height: 40px;
+      padding: 7px 11px;
+      border: 1px solid #ced4da;
+      border-radius: 7px;
+      background: white;
+      color: #333;
+      font-size: 14px;
+    }
+    .month-input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,.15); }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(180px, 1fr));
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      padding: 18px;
+      border: 1px solid #e4e7f5;
+      border-radius: 10px;
+      background: linear-gradient(180deg, #fbfbff 0%, #f7f8ff 100%);
+    }
+    .stat-card.overall { color: white; border: 0; background: linear-gradient(135deg, #667eea, #764ba2); }
+    .stat-label { font-size: 12px; font-weight: 700; opacity: .8; }
+    .stat-rate { display: flex; align-items: baseline; gap: 5px; margin: 8px 0 10px; }
+    .stat-rate strong { font-size: 30px; line-height: 1; }
+    .stat-rate span { font-size: 14px; font-weight: 700; }
+    .stat-count { font-size: 11px; opacity: .8; }
+    .stat-progress { height: 7px; margin-top: 12px; overflow: hidden; border-radius: 8px; background: rgba(102,126,234,.15); }
+    .stat-card.overall .stat-progress { background: rgba(255,255,255,.25); }
+    .stat-progress-bar { height: 100%; border-radius: 8px; background: #667eea; }
+    .stat-card.overall .stat-progress-bar { background: white; }
+    .history-heading { margin: 4px 0 12px; color: #444; font-size: 15px; }
+    .stats-table { min-width: 720px; }
+    .stats-table th { background: #545b78; text-align: center; }
+    .stats-table th:first-child, .stats-table td:first-child { text-align: left; }
+    .stats-table td { text-align: center; }
+    .rate-value { display: block; color: #495057; font-size: 15px; font-weight: 800; }
+    .rate-detail { display: block; margin-top: 2px; color: #999; font-size: 10px; }
+
+    @media (max-width: 900px) {
+      .stats-grid { grid-template-columns: repeat(2, minmax(160px, 1fr)); }
+    }
+    @media (max-width: 520px) {
+      .stats-grid { grid-template-columns: 1fr; }
+      .stats-filter, .stats-filter label, .month-input { width: 100%; }
+    }
+
     /* テスト送信 */
     .test-send-card {
       background: #fffdf0;
@@ -317,6 +377,8 @@
       padding: 1px 6px;
       border-radius: 4px;
       font-size: 11px;
+      overflow-wrap: anywhere;
+      word-break: break-all;
     }
     .test-send-row {
       display: flex;
@@ -402,6 +464,86 @@
     <span class="toggle-status-text <%= missionEnabled ? 'on' : 'off' %>" id="toggleStatusText">
       <%= missionEnabled ? '✅ ON（毎日15時に自動送信）' : '⏸️ OFF（自動送信を停止中）' %>
     </span>
+  </div>
+
+  <!-- 月別ミッション達成率 -->
+  <div class="section">
+    <h2>📊 月別ミッション達成率</h2>
+    <div class="stats-toolbar">
+      <p class="stats-definition">
+        選択月に送付したミッションを対象に、現在完了済みの件数から達成率を計算します。<br>
+        達成率 ＝ 完了件数 ÷ 送付件数（再開始した場合も各送付履歴を保持して集計）
+      </p>
+      <form method="get" action="/mission" class="stats-filter">
+        <label for="statsMonth">
+          表示する年月
+          <input type="month" id="statsMonth" name="month" class="month-input"
+            value="<%= missionStats.selectedMonth %>" onchange="this.form.submit()" required>
+        </label>
+        <noscript><button type="submit" class="msg-save-btn">表示</button></noscript>
+      </form>
+    </div>
+
+    <h3 class="history-heading"><%= missionStats.selected.monthLabel %> の結果</h3>
+    <div class="stats-grid">
+      <%
+        const statCards = [
+          { label: '全体', data: missionStats.selected.overall, overall: true },
+          { label: 'ミッション1', data: missionStats.selected.missions[1] },
+          { label: 'ミッション2', data: missionStats.selected.missions[2] },
+          { label: 'ミッション3', data: missionStats.selected.missions[3] }
+        ];
+        statCards.forEach(card => {
+      %>
+        <div class="stat-card <%= card.overall ? 'overall' : '' %>">
+          <div class="stat-label"><%= card.label %></div>
+          <div class="stat-rate">
+            <strong><%= card.data.achievementRate %></strong><span>%</span>
+          </div>
+          <div class="stat-count">
+            完了 <%= card.data.completedCount %> / 送付 <%= card.data.sentCount %> 件
+            <% if (card.overall) { %>・対象 <%= card.data.studentCount %> 名<% } %>
+          </div>
+          <div class="stat-progress" aria-hidden="true">
+            <div class="stat-progress-bar" style="width:<%= card.data.achievementRate %>%;"></div>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+
+    <h3 class="history-heading">過去のデータ（全期間）</h3>
+    <% if (missionStats.monthly.length > 0) { %>
+      <div class="table-wrap">
+        <table class="stats-table">
+          <thead>
+            <tr>
+              <th>年月</th>
+              <th>対象生徒</th>
+              <th>全体</th>
+              <th>ミッション1</th>
+              <th>ミッション2</th>
+              <th>ミッション3</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% missionStats.monthly.forEach(monthStat => { %>
+              <tr>
+                <td><strong><%= monthStat.monthLabel %></strong></td>
+                <td><%= monthStat.overall.studentCount %> 名</td>
+                <% [monthStat.overall, monthStat.missions[1], monthStat.missions[2], monthStat.missions[3]].forEach(stat => { %>
+                  <td>
+                    <span class="rate-value"><%= stat.achievementRate %>%</span>
+                    <span class="rate-detail"><%= stat.completedCount %> / <%= stat.sentCount %> 件</span>
+                  </td>
+                <% }); %>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } else { %>
+      <div class="empty-state">📭 集計できるミッション送付履歴がまだありません</div>
+    <% } %>
   </div>
 
   <!-- テスト送信 -->

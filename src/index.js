@@ -7,6 +7,7 @@ require('dotenv').config();
 
 const { initializeDatabase, getAllBenefitHistory, getSendLogs, saveBenefitImage, getBenefitImage, getAllBenefitImages, deleteBenefitImage,
   getAllMissionMessages, updateMissionMessage, getAllStudentMissions, getStudentMission, startMission, setMissionCompleted, setMissionSentAt,
+  getAllMissionHistory,
   getAllReminderMessages, updateReminderMessage,
   getSetting, setSetting
 } = require('./db/database');
@@ -14,11 +15,27 @@ const { initializeGoogleSheets, getMessageForBenefit, getMissionStudentList } = 
 const { initializeDiscordBot, sendDiscordMessage } = require('./services/discord');
 const { processAllBenefits } = require('./services/benefitService');
 const { sendMission1, sendMissionN, processMissionCompletionCheck, processMission1AutoSend, processMissionAutoSend, processReminderAutoSend, replaceDatePlaceholder, getTomorrowLabel, isEntryPlan } = require('./services/missionService');
+const { buildMissionMonthlyStats } = require('./services/missionStatsService');
 const { formatDateTime } = require('./utils/dateUtils');
+const { parseMissionNo } = require('./utils/validation');
+const { validateEnvironment } = require('./config/environment');
 const ssoAuth = require('../middleware/sso-auth-middleware');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.set('X-Content-Type-Options', 'nosniff');
+  next();
+});
+
+const ALLOWED_IMAGE_MIME_TYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp'
+]);
 
 // Multer設定（メモリストレージ）
 const upload = multer({
@@ -28,7 +45,7 @@ const upload = multer({
   },
   fileFilter: (req, file, cb) => {
     // PNG, JPEG, GIF, WEBPのみ許可
-    if (file.mimetype.startsWith('image/')) {
+    if (ALLOWED_IMAGE_MIME_TYPES.has(file.mimetype)) {
       cb(null, true);
     } else {
       cb(new Error('画像ファイルのみアップロード可能です'));
@@ -37,20 +54,18 @@ const upload = multer({
 });
 
 // ミドルウェア設定
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb', parameterLimit: 100 }));
 app.use(cookieParser());
 app.use(express.static('public'));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '../views'));
 
-// SSO認証ミドルウェア（APIルートは除外）
+// SSO認証ミドルウェア（外部監視用のヘルスチェックだけ除外）
 app.use((req, res, next) => {
-  // APIルートはSSO認証をスキップ
-  if (req.path.startsWith('/api/')) {
+  if (req.path === '/health') {
     return next();
   }
-  // その他のルートはSSO認証を適用
   return ssoAuth(req, res, next);
 });
 
@@ -296,11 +311,12 @@ app.delete('/api/image/:benefitRank', async (req, res) => {
 // ========================================
 app.get('/mission', async (req, res) => {
   try {
-    const [messages, reminderMessages, sheetStudents, dbMissions] = await Promise.all([
+    const [messages, reminderMessages, sheetStudents, dbMissions, missionHistory] = await Promise.all([
       getAllMissionMessages(),
       getAllReminderMessages(),
       getMissionStudentList(),
-      getAllStudentMissions()
+      getAllStudentMissions(),
+      getAllMissionHistory()
     ]);
 
     // DBのミッション進捗をstudentIdで引けるMapに変換
@@ -309,11 +325,14 @@ app.get('/mission', async (req, res) => {
       missionMap[m.student_id] = m;
     }
 
+    const missionStats = buildMissionMonthlyStats(missionHistory, req.query.month);
+
     res.render('mission', {
       messages,
       reminderMessages,
       sheetStudents,
       missionMap,
+      missionStats,
       missionEnabled,
       formatDateTime
     });
@@ -341,13 +360,17 @@ app.post('/api/mission/toggle', async (req, res) => {
 // API: ミッションメッセージ保存
 app.post('/api/mission/message', async (req, res) => {
   const { missionNo, messageContent } = req.body;
-  if (!missionNo || messageContent === undefined) {
+  if (messageContent === undefined) {
     return res.status(400).json({ success: false, message: 'missionNo と messageContent は必須です' });
   }
   try {
-    await updateMissionMessage(parseInt(missionNo), messageContent);
+    const no = parseMissionNo(missionNo);
+    await updateMissionMessage(no, messageContent);
     res.json({ success: true });
   } catch (error) {
+    if (error instanceof RangeError) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
     console.error('ミッションメッセージ保存エラー:', error);
     res.status(500).json({ success: false, message: error.message });
   }
@@ -356,13 +379,17 @@ app.post('/api/mission/message', async (req, res) => {
 // API: リマインドメッセージ保存
 app.post('/api/mission/reminder-message', async (req, res) => {
   const { missionNo, messageContent } = req.body;
-  if (!missionNo || messageContent === undefined) {
+  if (messageContent === undefined) {
     return res.status(400).json({ success: false, message: 'missionNo と messageContent は必須です' });
   }
   try {
-    await updateReminderMessage(parseInt(missionNo), messageContent);
+    const no = parseMissionNo(missionNo);
+    await updateReminderMessage(no, messageContent);
     res.json({ success: true });
   } catch (error) {
+    if (error instanceof RangeError) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
     console.error('リマインドメッセージ保存エラー:', error);
     res.status(500).json({ success: false, message: error.message });
   }
@@ -386,13 +413,17 @@ app.post('/api/mission/start', async (req, res) => {
 // API: ミッション完了チェック更新
 app.post('/api/mission/complete', async (req, res) => {
   const { studentId, missionNo, completed } = req.body;
-  if (!studentId || !missionNo) {
+  if (!studentId) {
     return res.status(400).json({ success: false, message: '必須パラメータが不足しています' });
   }
   try {
-    await setMissionCompleted(studentId, parseInt(missionNo), !!completed);
+    const no = parseMissionNo(missionNo);
+    await setMissionCompleted(studentId, no, !!completed);
     res.json({ success: true });
   } catch (error) {
+    if (error instanceof RangeError) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
     console.error('ミッション完了更新エラー:', error);
     res.status(500).json({ success: false, message: error.message });
   }
@@ -412,9 +443,11 @@ app.get('/api/mission/progress/:studentId', async (req, res) => {
 // 固定テスト送信先へ指定ミッション番号のメッセージを送信（DBへの記録なし）
 app.post('/api/mission/test-send', async (req, res) => {
   const { missionNo } = req.body;
-  const no = parseInt(missionNo);
-  if (!no || no < 1 || no > 3) {
-    return res.status(400).json({ success: false, message: 'missionNo は 1〜3 で指定してください' });
+  let no;
+  try {
+    no = parseMissionNo(missionNo);
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error.message });
   }
 
   // 固定テスト送信先
@@ -469,6 +502,20 @@ app.get('/health', (req, res) => {
   });
 });
 
+// API向けエラーレスポンス（Multerの検証エラーを含む）
+app.use((error, req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    const isUploadError = error instanceof multer.MulterError
+      || error.message === '画像ファイルのみアップロード可能です';
+    const status = isUploadError ? 400 : 500;
+    return res.status(status).json({
+      success: false,
+      message: isUploadError ? error.message : 'リクエスト処理でエラーが発生しました'
+    });
+  }
+  return next(error);
+});
+
 // 初期化関数
 async function initialize() {
   console.log('\n' + '='.repeat(60));
@@ -476,6 +523,8 @@ async function initialize() {
   console.log('='.repeat(60) + '\n');
   
   try {
+    validateEnvironment();
+
     // データベース初期化
     console.log('📦 データベース初期化中...');
     await initializeDatabase();
@@ -498,6 +547,7 @@ async function initialize() {
   } catch (error) {
     console.error('\n❌ 初期化エラー:', error);
     console.error('環境変数を確認してください\n');
+    throw error;
   }
 }
 
@@ -580,8 +630,16 @@ async function startServer() {
   });
 }
 
-// サーバー起動
-startServer().catch(error => {
-  console.error('サーバー起動失敗:', error);
-  process.exit(1);
-});
+if (require.main === module) {
+  startServer().catch(error => {
+    console.error('サーバー起動失敗:', error);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  app,
+  initialize,
+  setupCronJob,
+  startServer
+};

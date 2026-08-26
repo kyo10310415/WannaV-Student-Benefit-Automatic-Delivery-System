@@ -56,14 +56,16 @@ async function getStudentInfo() {
   for (const row of data) {
     const planType = row[2]; // C列: プラン種別
     const memberStatus = row[3]; // D列: 会員ステータス
+    const studentId = (row[1] || '').trim(); // B列: 学籍番号
     
     // スタンダードプラン、レギュラープラン、プレミアムプランが対象
     // かつ会員ステータスが「アクティブ」または「レッスン準備中」の場合
-    if ((planType === 'スタンダードプラン' || planType === 'レギュラープラン' || planType === 'プレミアムプラン') 
+    if (studentId
+        && (planType === 'スタンダードプラン' || planType === 'レギュラープラン' || planType === 'プレミアムプラン')
         && (memberStatus === 'アクティブ' || memberStatus === 'レッスン準備中')) {
       students.push({
         studentName: row[0] || '',           // A列: 生徒名
-        studentId: (row[1] || '').trim(),    // B列: 学籍番号（前後の空白を除去）
+        studentId,                           // B列: 学籍番号（前後の空白を除去）
         planType: planType,                  // C列: プラン種別
         memberStatus: memberStatus,          // D列: 会員ステータス
         discordUserId: row[6] || '',         // G列: DiscordユーザーID
@@ -103,12 +105,12 @@ async function getTenDayAchievementDates() {
         const baseDate = parseDate(rColumnDate);
         if (baseDate) {
           const achievementDate = new Date(baseDate);
-          achievementDate.setDate(achievementDate.getDate() + 2); // +2日
+          achievementDate.setUTCDate(achievementDate.getUTCDate() + 2); // +2日
           
           // YYYY/MM/DD 形式で保存
-          const year = achievementDate.getFullYear();
-          const month = achievementDate.getMonth() + 1;
-          const day = achievementDate.getDate();
+          const year = achievementDate.getUTCFullYear();
+          const month = achievementDate.getUTCMonth() + 1;
+          const day = achievementDate.getUTCDate();
           achievementDateMap[studentId] = `${year}/${month}/${day}`;
         }
       }

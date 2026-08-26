@@ -1,7 +1,7 @@
-const { getStudentInfo, getEnrollmentDates, getTenDayAchievementDates, getMessageForBenefit, getPaymentStatus } = require('./googleSheets');
+const { getStudentInfo, getTenDayAchievementDates, getMessageForBenefit, getPaymentStatus } = require('./googleSheets');
 const { sendDiscordMessage } = require('./discord');
 const { getOrCreateStudentHistory, updateBenefitHistory, setPendingBenefit, createSendLog, getBenefitImage } = require('../db/database');
-const { parseDate, getDaysDifference, getMonthsDifference, getJapanTime } = require('../utils/dateUtils');
+const { parseDate, getMonthsDifference, getJapanTime } = require('../utils/dateUtils');
 
 // ランク定義（日数・月数ベース）
 const RANK_DEFINITIONS = [
@@ -12,8 +12,8 @@ const RANK_DEFINITIONS = [
   { rank: 'ブロンズ', type: 'months', value: 3, fromLessonStart: true },    // レッスン4ヶ月目
   { rank: 'シルバー', type: 'months', value: 6, fromLessonStart: true },    // レッスン7ヶ月目
   { rank: 'ゴールド', type: 'months', value: 12, fromLessonStart: true },   // レッスン13ヶ月目
-  { rank: 'プラチナ', type: 'months', value: 18, fromLessonStart: true },   // レッスン19ヶ月目（未実装）
-  { rank: 'ブラック', type: 'months', value: 24, fromLessonStart: true }    // レッスン25ヶ月目（未実装）
+  { rank: 'プラチナ', type: 'months', value: 18, fromLessonStart: true, enabled: false }, // レッスン19ヶ月目（未実装）
+  { rank: 'ブラック', type: 'months', value: 24, fromLessonStart: true, enabled: false }   // レッスン25ヶ月目（未実装）
 ];
 
 /**
@@ -21,8 +21,15 @@ const RANK_DEFINITIONS = [
  * 支払い完了後すぐに送信: 過去の該当月を過ぎている場合は月初でなくても送信
  * 10日達成: ❹オンボーディングシート R列+2日
  */
-function determineCurrentRank(studentId, tenDayAchievementDateMap, lessonStartDate, lastSentRank) {
-  const now = getJapanTime();
+function determineCurrentRank(
+  studentId,
+  tenDayAchievementDateMap,
+  lessonStartDate,
+  lastSentRank,
+  pendingBenefitRank = null,
+  referenceDate = new Date()
+) {
+  const now = getJapanTime(referenceDate);
   const lessonStart = parseDate(lessonStartDate);
   
   // 送信済みランクのインデックスを取得
@@ -33,6 +40,11 @@ function determineCurrentRank(studentId, tenDayAchievementDateMap, lessonStartDa
   // 次に送信すべきランクを順番に確認
   for (let i = lastRankIndex + 1; i < RANK_DEFINITIONS.length; i++) {
     const rankDef = RANK_DEFINITIONS[i];
+
+    // メッセージ設定が未実装のランクは送信対象にしない
+    if (rankDef.enabled === false) {
+      continue;
+    }
     
     // 10日達成の判定（❹オンボーディングシート R列+2日）
     if (rankDef.fromOnboarding) {
@@ -71,8 +83,13 @@ function determineCurrentRank(studentId, tenDayAchievementDateMap, lessonStartDa
           // 該当月を過ぎている = 既に送信タイミングを過ぎている
           return rankDef.rank;
         } else {
-          // 該当月ちょうど = 月初のみ送信
-          const isFirstDay = now.getDate() === 1;
+          // 支払い待ちとして記録済みなら、支払い完了後は同月内でも即時送信
+          if (pendingBenefitRank === rankDef.rank) {
+            return rankDef.rank;
+          }
+
+          // 該当月ちょうどで未保留の場合は月初のみ送信
+          const isFirstDay = now.getUTCDate() === 1;
           if (isFirstDay) {
             return rankDef.rank;
           }
@@ -97,7 +114,7 @@ async function processBenefitForStudent(student, tenDayAchievementDateMap, payme
       studentId: student.studentId,
       planType: student.planType,
       enrollmentDate: null, // 不要になった
-      lessonStartDate: student.lessonStartDate,
+      lessonStartDate: student.lessonStartDate || null,
       discordChannelUrl: student.discordChannelUrl
     });
     
@@ -106,7 +123,8 @@ async function processBenefitForStudent(student, tenDayAchievementDateMap, payme
       student.studentId,
       tenDayAchievementDateMap,
       student.lessonStartDate,
-      history.last_benefit_rank
+      history.last_benefit_rank,
+      history.pending_benefit_rank
     );
     
     if (!currentRank) {

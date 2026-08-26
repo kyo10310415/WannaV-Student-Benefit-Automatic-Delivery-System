@@ -107,6 +107,49 @@ ALTER TABLE student_missions ADD COLUMN IF NOT EXISTS mission3_reminded_at TIMES
 -- student_missions にプラン種別カラムを追加
 ALTER TABLE student_missions ADD COLUMN IF NOT EXISTS plan_type VARCHAR(50);
 
+-- ミッション送付履歴（再開始後も過去データを保持するため、1送付につき1レコード）
+CREATE TABLE IF NOT EXISTS mission_history (
+  id SERIAL PRIMARY KEY,
+  student_id VARCHAR(50) NOT NULL,
+  student_name VARCHAR(255) NOT NULL,
+  plan_type VARCHAR(50),
+  mission_no INTEGER NOT NULL CHECK (mission_no IN (1, 2, 3)),
+  sent_at TIMESTAMP NOT NULL,
+  completed BOOLEAN NOT NULL DEFAULT FALSE,
+  completed_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (student_id, mission_no, sent_at)
+);
+
+CREATE INDEX IF NOT EXISTS idx_mission_history_sent_at ON mission_history(sent_at);
+CREATE INDEX IF NOT EXISTS idx_mission_history_monthly ON mission_history(mission_no, sent_at);
+
+COMMENT ON TABLE mission_history IS '月次集計と再開始前データ保持のためのミッション送付履歴';
+COMMENT ON COLUMN mission_history.sent_at IS 'ミッション送付日時（UTC）';
+COMMENT ON COLUMN mission_history.completed_at IS 'ミッション完了日時（UTC）';
+
+-- 既存の進捗データを履歴へ自動取り込み（起動のたびに実行しても重複しない）
+INSERT INTO mission_history
+  (student_id, student_name, plan_type, mission_no, sent_at, completed, completed_at)
+SELECT student_id, student_name, plan_type, 1, mission1_sent_at, mission1_completed, mission1_completed_at
+FROM student_missions
+WHERE mission1_sent_at IS NOT NULL
+UNION ALL
+SELECT student_id, student_name, plan_type, 2, mission2_sent_at, mission2_completed, mission2_completed_at
+FROM student_missions
+WHERE mission2_sent_at IS NOT NULL
+UNION ALL
+SELECT student_id, student_name, plan_type, 3, mission3_sent_at, mission3_completed, mission3_completed_at
+FROM student_missions
+WHERE mission3_sent_at IS NOT NULL
+ON CONFLICT (student_id, mission_no, sent_at) DO UPDATE SET
+  student_name = EXCLUDED.student_name,
+  plan_type = EXCLUDED.plan_type,
+  completed = EXCLUDED.completed,
+  completed_at = EXCLUDED.completed_at,
+  updated_at = CURRENT_TIMESTAMP;
+
 -- リマインドメッセージ管理テーブル（ミッション1〜3それぞれのリマインド文）
 CREATE TABLE IF NOT EXISTS reminder_messages (
   id SERIAL PRIMARY KEY,

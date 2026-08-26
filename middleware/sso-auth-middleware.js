@@ -11,9 +11,14 @@
 
 const jwt = require('jsonwebtoken');
 
-// WannaV Dashboardと同じJWT_SECRETを使用
-const JWT_SECRET = process.env.JWT_SECRET || 'wannav-secret-key-change-in-production';
 const DASHBOARD_URL = process.env.DASHBOARD_URL || 'https://wannav-main.onrender.com';
+
+function rejectAuthentication(req, res, message) {
+  if (req.path.startsWith('/api/')) {
+    return res.status(401).json({ success: false, message });
+  }
+  return res.redirect(DASHBOARD_URL);
+}
 
 function ssoAuthMiddleware(req, res, next) {
   // 認証トークンをチェック
@@ -25,17 +30,22 @@ function ssoAuthMiddleware(req, res, next) {
   // トークンがない場合はダッシュボードにリダイレクト
   if (!token) {
     console.log('❌ SSO トークンなし → ダッシュボードにリダイレクト');
-    return res.redirect(DASHBOARD_URL);
+    return rejectAuthentication(req, res, '認証が必要です');
   }
 
   try {
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRETが設定されていません');
+    }
+
     // トークンを検証
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, jwtSecret, { algorithms: ['HS256'] });
     
     // SSOトークンかチェック
     if (decoded.type !== 'sso') {
       console.log('❌ 無効なトークンタイプ');
-      return res.redirect(DASHBOARD_URL);
+      return rejectAuthentication(req, res, '無効な認証トークンです');
     }
 
     console.log(`✅ SSO 認証成功: ${decoded.username} (${decoded.role})`);
@@ -68,7 +78,7 @@ function ssoAuthMiddleware(req, res, next) {
     // トークンが期限切れの場合、Cookieをクリア
     res.clearCookie('wannav_sso');
     
-    return res.redirect(DASHBOARD_URL);
+    return rejectAuthentication(req, res, '認証トークンが無効または期限切れです');
   }
 }
 

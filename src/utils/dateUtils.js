@@ -16,7 +16,15 @@ function parseDate(dateString) {
       const day   = parseInt(slashMatch[3], 10);
       // UTC 00:00:00 として生成（タイムゾーンに依存しない）
       const date = new Date(Date.UTC(year, month - 1, day));
-      if (isNaN(date.getTime())) return null;
+      // Date は 2月31日などを翌月へ繰り越すため、元の年月日と一致することも検証する
+      if (
+        isNaN(date.getTime()) ||
+        date.getUTCFullYear() !== year ||
+        date.getUTCMonth() !== month - 1 ||
+        date.getUTCDate() !== day
+      ) {
+        return null;
+      }
       return date;
     }
     
@@ -41,8 +49,8 @@ function getDaysDifference(date1, date2) {
  * 2つの日付の差を月数で計算
  */
 function getMonthsDifference(startDate, currentDate) {
-  const yearDiff = currentDate.getFullYear() - startDate.getFullYear();
-  const monthDiff = currentDate.getMonth() - startDate.getMonth();
+  const yearDiff = currentDate.getUTCFullYear() - startDate.getUTCFullYear();
+  const monthDiff = currentDate.getUTCMonth() - startDate.getUTCMonth();
   return yearDiff * 12 + monthDiff;
 }
 
@@ -50,18 +58,36 @@ function getMonthsDifference(startDate, currentDate) {
  * 月初かどうかを判定
  */
 function isFirstDayOfMonth(date) {
-  return date.getDate() === 1;
+  return date.getUTCDate() === 1;
 }
 
 /**
  * 現在の日本時間を取得
- * UTC+9 オフセットをタイムスタンプに加算して返す
- * ※ 返り値の getFullYear/getMonth/getDate/getHours は JST の値として扱うこと
+ * JSTのカレンダー値をUTC getterで参照できるDateとして返す。
+ * これにより、ホストOSのタイムゾーンに関係なく同じ判定結果になる。
+ * ※ 返り値は getUTCFullYear/getUTCMonth/getUTCDate/getUTCHours で参照すること
  */
-function getJapanTime() {
-  // UTC タイムスタンプに 9 時間分を加算して JST のタイムスタンプとして扱う
-  const utcNow = new Date();
-  return new Date(utcNow.getTime() + 9 * 60 * 60 * 1000);
+function getJapanTime(referenceDate = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric',
+    hourCycle: 'h23'
+  }).formatToParts(referenceDate);
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+
+  return new Date(Date.UTC(
+    Number(values.year),
+    Number(values.month) - 1,
+    Number(values.day),
+    Number(values.hour),
+    Number(values.minute),
+    Number(values.second)
+  ));
 }
 
 /**
@@ -69,9 +95,9 @@ function getJapanTime() {
  */
 function formatDate(date) {
   if (!date) return '';
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 

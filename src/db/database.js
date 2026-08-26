@@ -1,4 +1,5 @@
 const { Pool } = require('pg');
+const { parseMissionNo } = require('../utils/validation');
 require('dotenv').config();
 
 // PostgreSQL接続プール
@@ -28,33 +29,34 @@ async function initializeDatabase() {
 async function getOrCreateStudentHistory(studentData) {
   const client = await pool.connect();
   try {
-    // 既存レコード検索
-    const selectResult = await client.query(
-      'SELECT * FROM benefit_history WHERE student_id = $1',
-      [studentData.studentId]
-    );
-
-    if (selectResult.rows.length > 0) {
-      return selectResult.rows[0];
-    }
-
-    // 新規レコード作成
-    const insertResult = await client.query(
+    // 新規作成と基本情報の同期を1クエリで行い、同時実行時の競合も避ける
+    const result = await client.query(
       `INSERT INTO benefit_history 
        (student_name, student_id, plan_type, enrollment_date, lesson_start_date, discord_channel_url) 
        VALUES ($1, $2, $3, $4, $5, $6) 
+       ON CONFLICT (student_id) DO UPDATE SET
+         student_name = EXCLUDED.student_name,
+         plan_type = EXCLUDED.plan_type,
+         enrollment_date = COALESCE(EXCLUDED.enrollment_date, benefit_history.enrollment_date),
+         lesson_start_date = COALESCE(EXCLUDED.lesson_start_date, benefit_history.lesson_start_date),
+         discord_channel_url = CASE
+           WHEN EXCLUDED.discord_channel_url IS NULL OR EXCLUDED.discord_channel_url = ''
+             THEN benefit_history.discord_channel_url
+           ELSE EXCLUDED.discord_channel_url
+         END,
+         updated_at = CURRENT_TIMESTAMP
        RETURNING *`,
       [
         studentData.studentName,
         studentData.studentId,
         studentData.planType,
-        studentData.enrollmentDate,
-        studentData.lessonStartDate,
-        studentData.discordChannelUrl
+        studentData.enrollmentDate || null,
+        studentData.lessonStartDate || null,
+        studentData.discordChannelUrl || null
       ]
     );
 
-    return insertResult.rows[0];
+    return result.rows[0];
   } finally {
     client.release();
   }
@@ -263,31 +265,62 @@ async function getStudentMission(studentId) {
   }
 }
 
+// 全ミッション送付履歴を取得（月次達成率集計用）
+async function getAllMissionHistory() {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `SELECT student_id,
+              mission_no,
+              sent_at AT TIME ZONE 'UTC' AS sent_at,
+              completed
+       FROM mission_history
+       ORDER BY mission_history.sent_at DESC, id DESC`
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
 // ミッション開始（ミッション1送付日を記録）
 async function startMission(studentId, studentName, discordChannelUrl, planType) {
   const client = await pool.connect();
   try {
     const result = await client.query(
-      `INSERT INTO student_missions (student_id, student_name, discord_channel_url, plan_type, mission1_sent_at, updated_at)
-       VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-       ON CONFLICT (student_id) DO UPDATE SET
-         student_name = EXCLUDED.student_name,
-         discord_channel_url = EXCLUDED.discord_channel_url,
-         plan_type = EXCLUDED.plan_type,
-         mission1_sent_at = CURRENT_TIMESTAMP,
-         mission1_completed = FALSE,
-         mission1_completed_at = NULL,
-         mission2_sent_at = NULL,
-         mission2_completed = FALSE,
-         mission2_completed_at = NULL,
-         mission3_sent_at = NULL,
-         mission3_completed = FALSE,
-         mission3_completed_at = NULL,
-         mission1_reminded_at = NULL,
-         mission2_reminded_at = NULL,
-         mission3_reminded_at = NULL,
-         updated_at = CURRENT_TIMESTAMP
-       RETURNING *`,
+      `WITH mission_time AS (
+         SELECT CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AS sent_at
+       ), upserted AS (
+         INSERT INTO student_missions
+           (student_id, student_name, discord_channel_url, plan_type, mission1_sent_at, updated_at)
+         SELECT $1, $2, $3, $4, sent_at, CURRENT_TIMESTAMP
+         FROM mission_time
+         ON CONFLICT (student_id) DO UPDATE SET
+           student_name = EXCLUDED.student_name,
+           discord_channel_url = EXCLUDED.discord_channel_url,
+           plan_type = EXCLUDED.plan_type,
+           mission1_sent_at = EXCLUDED.mission1_sent_at,
+           mission1_completed = FALSE,
+           mission1_completed_at = NULL,
+           mission2_sent_at = NULL,
+           mission2_completed = FALSE,
+           mission2_completed_at = NULL,
+           mission3_sent_at = NULL,
+           mission3_completed = FALSE,
+           mission3_completed_at = NULL,
+           mission1_reminded_at = NULL,
+           mission2_reminded_at = NULL,
+           mission3_reminded_at = NULL,
+           updated_at = CURRENT_TIMESTAMP
+         RETURNING *
+       ), history_insert AS (
+         INSERT INTO mission_history
+           (student_id, student_name, plan_type, mission_no, sent_at, completed, completed_at)
+         SELECT student_id, student_name, plan_type, 1, mission1_sent_at, FALSE, NULL
+         FROM upserted
+         ON CONFLICT (student_id, mission_no, sent_at) DO NOTHING
+       )
+       SELECT * FROM upserted`,
       [studentId, studentName, discordChannelUrl, planType || null]
     );
     return result.rows[0];
@@ -298,17 +331,39 @@ async function startMission(studentId, studentName, discordChannelUrl, planType)
 
 // ミッション完了チェック更新
 async function setMissionCompleted(studentId, missionNo, completed) {
+  missionNo = parseMissionNo(missionNo);
   const client = await pool.connect();
   try {
-    const completedAtSql = completed
-      ? `mission${missionNo}_completed_at = CURRENT_TIMESTAMP`
-      : `mission${missionNo}_completed_at = NULL`;
     await client.query(
-      `UPDATE student_missions
-       SET mission${missionNo}_completed = $1,
-           ${completedAtSql},
+      `WITH updated_mission AS (
+         UPDATE student_missions
+         SET mission${missionNo}_completed = $1,
+             mission${missionNo}_completed_at = CASE
+               WHEN $1 THEN CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
+               ELSE NULL
+             END,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE student_id = $2
+           AND mission${missionNo}_sent_at IS NOT NULL
+         RETURNING student_id, mission${missionNo}_sent_at AS sent_at
+       )
+       UPDATE mission_history
+       SET completed = $1,
+           completed_at = CASE
+             WHEN $1 THEN CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
+             ELSE NULL
+           END,
            updated_at = CURRENT_TIMESTAMP
-       WHERE student_id = $2`,
+       WHERE id = (
+         SELECT history.id
+         FROM mission_history AS history
+         JOIN updated_mission
+           ON updated_mission.student_id = history.student_id
+          AND updated_mission.sent_at = history.sent_at
+         WHERE history.mission_no = ${missionNo}
+         ORDER BY history.sent_at DESC, history.id DESC
+         LIMIT 1
+       )`,
       [completed, studentId]
     );
   } finally {
@@ -318,13 +373,22 @@ async function setMissionCompleted(studentId, missionNo, completed) {
 
 // ミッション送付日を記録（ミッション2 or 3）
 async function setMissionSentAt(studentId, missionNo) {
+  missionNo = parseMissionNo(missionNo);
   const client = await pool.connect();
   try {
     await client.query(
-      `UPDATE student_missions
-       SET mission${missionNo}_sent_at = CURRENT_TIMESTAMP,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE student_id = $1`,
+      `WITH updated_mission AS (
+         UPDATE student_missions
+         SET mission${missionNo}_sent_at = CURRENT_TIMESTAMP AT TIME ZONE 'UTC',
+             updated_at = CURRENT_TIMESTAMP
+         WHERE student_id = $1
+         RETURNING student_id, student_name, plan_type, mission${missionNo}_sent_at
+       )
+       INSERT INTO mission_history
+         (student_id, student_name, plan_type, mission_no, sent_at, completed, completed_at)
+       SELECT student_id, student_name, plan_type, ${missionNo}, mission${missionNo}_sent_at, FALSE, NULL
+       FROM updated_mission
+       ON CONFLICT (student_id, mission_no, sent_at) DO NOTHING`,
       [studentId]
     );
   } finally {
@@ -335,6 +399,10 @@ async function setMissionSentAt(studentId, missionNo) {
 // ミッション2/3の自動送信対象を取得（通常プラン用）
 // 「前ミッション完了済み」かつ「完了日の翌日以降」かつ「次ミッション未送信」の生徒
 async function getMissionAutoSendTargets(missionNo) {
+  missionNo = parseMissionNo(missionNo);
+  if (missionNo === 1) {
+    throw new RangeError('自動送信対象のミッション番号は 2 または 3 で指定してください');
+  }
   const client = await pool.connect();
   try {
     const prevNo = missionNo - 1;
@@ -343,8 +411,8 @@ async function getMissionAutoSendTargets(missionNo) {
        WHERE mission${prevNo}_completed = TRUE
          AND mission${prevNo}_completed_at IS NOT NULL
          AND mission${missionNo}_sent_at IS NULL
-         AND (mission${prevNo}_completed_at AT TIME ZONE 'Asia/Tokyo' + INTERVAL '1 day')::DATE
-             <= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Tokyo')::DATE`,
+          AND (((mission${prevNo}_completed_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Tokyo')::DATE + 1)
+              <= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Tokyo')::DATE`,
       []
     );
     return result.rows;
@@ -365,8 +433,8 @@ async function getMissionAutoSendTargetsForEntry() {
          AND mission1_completed_at IS NOT NULL
          AND mission2_sent_at IS NULL
          AND mission3_sent_at IS NULL
-         AND (mission1_completed_at AT TIME ZONE 'Asia/Tokyo' + INTERVAL '1 day')::DATE
-             <= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Tokyo')::DATE`,
+          AND (((mission1_completed_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Tokyo')::DATE + 1)
+              <= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Tokyo')::DATE`,
       []
     );
     return result.rows;
@@ -407,11 +475,12 @@ async function updateReminderMessage(missionNo, messageContent) {
 
 // リマインド送信済みを記録
 async function setMissionRemindedAt(studentId, missionNo) {
+  missionNo = parseMissionNo(missionNo);
   const client = await pool.connect();
   try {
     await client.query(
       `UPDATE student_missions
-       SET mission${missionNo}_reminded_at = CURRENT_TIMESTAMP,
+       SET mission${missionNo}_reminded_at = CURRENT_TIMESTAMP AT TIME ZONE 'UTC',
            updated_at = CURRENT_TIMESTAMP
        WHERE student_id = $1`,
       [studentId]
@@ -424,6 +493,7 @@ async function setMissionRemindedAt(studentId, missionNo) {
 // リマインド自動送信対象を取得
 // 「ミッション送付済み」かつ「送付日から3日経過」かつ「完了チェックなし」かつ「リマインド未送信」
 async function getReminderTargets(missionNo) {
+  missionNo = parseMissionNo(missionNo);
   const client = await pool.connect();
   try {
     const result = await client.query(
@@ -431,8 +501,8 @@ async function getReminderTargets(missionNo) {
        WHERE mission${missionNo}_sent_at IS NOT NULL
          AND mission${missionNo}_completed = FALSE
          AND mission${missionNo}_reminded_at IS NULL
-         AND (mission${missionNo}_sent_at AT TIME ZONE 'Asia/Tokyo' + INTERVAL '3 days')::DATE
-             <= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Tokyo')::DATE`,
+          AND (((mission${missionNo}_sent_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Tokyo')::DATE + 3)
+              <= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Tokyo')::DATE`,
       []
     );
     return result.rows;
@@ -459,6 +529,7 @@ module.exports = {
   updateMissionMessage,
   getAllStudentMissions,
   getStudentMission,
+  getAllMissionHistory,
   startMission,
   setMissionCompleted,
   setMissionSentAt,

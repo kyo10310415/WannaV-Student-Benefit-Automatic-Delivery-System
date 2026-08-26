@@ -5,11 +5,12 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node src/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test",
+    "check": "npm test && npm audit --omit=dev --audit-level=high",
     "register:10day": "node scripts/register-10day-completed.js",
     "migrate": "node scripts/run-migration.js",
     "check:db": "node scripts/check-database.js",
-    "test:log": "node scripts/test-log-creation.js",
+    "test:log": "node scripts/check-log-creation.js",
     "fix:logs": "node scripts/fix-missing-logs.js"
   },
   "keywords": [
@@ -20,6 +21,9 @@
   ],
   "author": "WannaV",
   "license": "ISC",
+  "engines": {
+    "node": ">=20"
+  },
   "description": "WannaV VTuber育成スクール 生徒様特典自動送付システム",
   "dependencies": {
     "cookie-parser": "^1.4.7",
