@@ -186,6 +186,30 @@ async function getMessageForBenefit(planType, benefitRank) {
   return await getBenefitMessage(sheet, cell);
 }
 
+function normalizeSheetCell(value) {
+  return String(value ?? '').trim();
+}
+
+function buildPaymentStatusMap(headers, paymentData, targetYearMonth) {
+  const normalizedHeaders = (headers || []).map(normalizeSheetCell);
+  const studentIdColumnIndex = normalizedHeaders.indexOf('学籍番号');
+  const targetColumnIndex = normalizedHeaders.indexOf(targetYearMonth);
+  const paymentStatusMap = {};
+
+  if (studentIdColumnIndex === -1 || targetColumnIndex === -1) {
+    return { studentIdColumnIndex, targetColumnIndex, paymentStatusMap };
+  }
+
+  for (const row of paymentData || []) {
+    const studentId = normalizeSheetCell(row[studentIdColumnIndex]);
+    if (studentId) {
+      paymentStatusMap[studentId] = normalizeSheetCell(row[targetColumnIndex]);
+    }
+  }
+
+  return { studentIdColumnIndex, targetColumnIndex, paymentStatusMap };
+}
+
 // 支払い状況を取得（RAW_支払い状況シート）
 async function getPaymentStatus() {
   try {
@@ -202,34 +226,31 @@ async function getPaymentStatus() {
     const targetYearMonth = `${lastMonth.getFullYear()}/${lastMonth.getMonth() + 1}`; // 0埋めなし
     
     console.log(`💰 支払い状況チェック: 前月 ${targetYearMonth}`);
-    
-    // 前月の列インデックスを検索
-    let targetColumnIndex = -1;
-    for (let i = 0; i < headers.length; i++) {
-      if (headers[i] && headers[i].includes(targetYearMonth)) {
-        targetColumnIndex = i;
-        break;
-      }
+
+    // 列追加による位置ずれに備え、固定列ではなくヘッダー名から特定する
+    const {
+      studentIdColumnIndex,
+      targetColumnIndex,
+      paymentStatusMap
+    } = buildPaymentStatusMap(headers, paymentData, targetYearMonth);
+
+    if (studentIdColumnIndex === -1) {
+      console.warn('⚠️ 「学籍番号」列が見つかりません');
+      return {};
     }
-    
+
     if (targetColumnIndex === -1) {
       console.warn(`⚠️ 前月（${targetYearMonth}）の支払い状況列が見つかりません`);
       return {};
     }
-    
-    console.log(`✅ 前月の支払い状況列を検出: ${headers[targetColumnIndex]} (列インデックス: ${targetColumnIndex})`);
-    
-    // 学籍番号と支払い状況のマップを作成
-    const paymentStatusMap = {};
-    for (const row of paymentData) {
-      const studentId = (row[2] || '').trim(); // C列: 学籍番号（前後の空白を除去）
-      const paymentStatus = row[targetColumnIndex] || '';
-      
-      if (studentId) {
-        paymentStatusMap[studentId] = paymentStatus;
-      }
-    }
-    
+
+    console.log(
+      `✅ 学籍番号列を検出: ${headers[studentIdColumnIndex]} (列インデックス: ${studentIdColumnIndex})`
+    );
+    console.log(
+      `✅ 前月の支払い状況列を検出: ${headers[targetColumnIndex]} (列インデックス: ${targetColumnIndex})`
+    );
+
     return paymentStatusMap;
   } catch (error) {
     console.error('❌ 支払い状況取得エラー:', error);
@@ -359,6 +380,7 @@ async function getMission1AutoSendTargets() {
 }
 
 module.exports = {
+  buildPaymentStatusMap,
   initializeGoogleSheets,
   getStudentInfo,
   getEnrollmentDates,
