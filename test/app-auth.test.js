@@ -2,8 +2,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const jwt = require('jsonwebtoken');
 
-process.env.JWT_SECRET = 'test-shared-secret';
+process.env.JWT_SECRET = 'test-only-shared-secret-'.repeat(3);
 process.env.DASHBOARD_URL = 'https://dashboard.example.test';
+process.env.APP_ORIGIN = 'https://benefit.example.test';
+process.env.SSO_REQUIRED_ROLE = 'leader';
 
 const { app } = require('../src/index');
 
@@ -15,8 +17,9 @@ function createSsoToken() {
     type: 'sso',
     userId: 'test-user',
     username: 'tester',
-    role: 'admin'
-  }, process.env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '5m' });
+    role: 'admin', targetUrl: process.env.APP_ORIGIN
+  }, process.env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '5m',
+    issuer: 'https://wannav-main.onrender.com', audience: process.env.APP_ORIGIN });
 }
 
 test.before(async () => {

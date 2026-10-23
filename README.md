@@ -328,3 +328,7 @@ WannaV VTuber育成スクール システム開発チーム
 ---
 
 **最終更新日**: 2025年1月27日
+
+### SSO受信の設定（SEC-011）
+配備前にSSO_REQUIRED_ROLEをadmin・leader・crewのいずれかに明示し、ダッシュボードのrequired_roleと一致させてください。未設定・不正値は認証を拒否します。APP_ORIGINは本サービスのHTTPS origin（既定 https://wannav-benefit-system.onrender.com）。JWT_SECRETは共有の32文字以上の秘密値を維持し、この変更だけのために単独で交換しないでください。
+先にWannaV-mainのSSO発行側修正を配備してください。受信側ではHS256・issuer=https://wannav-main.onrender.com・audience=APP_ORIGIN・targetUrlのorigin・roleを確認します。古いSSO Cookieは再ログインが必要です。バッチ自動処理やDBスキーマは変更しません。

@@ -35,20 +35,32 @@ function ssoAuthMiddleware(req, res, next) {
 
   try {
     const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
+    if (!jwtSecret || jwtSecret.trim().length < 32) {
       throw new Error('JWT_SECRETが設定されていません');
     }
 
     // トークンを検証
-    const decoded = jwt.verify(token, jwtSecret, { algorithms: ['HS256'] });
+    const origin = new URL(process.env.APP_ORIGIN || 'https://wannav-benefit-system.onrender.com').origin;
+    const requiredRole = process.env.SSO_REQUIRED_ROLE;
+    const levels = { admin: 3, leader: 2, crew: 1 };
+    if (!Object.hasOwn(levels, requiredRole)) throw new Error('SSO_REQUIRED_ROLE is required');
+    const decoded = jwt.verify(token, jwtSecret, {
+      algorithms: ['HS256'], issuer: 'https://wannav-main.onrender.com', audience: origin
+    });
     
     // SSOトークンかチェック
     if (decoded.type !== 'sso') {
       console.log('❌ 無効なトークンタイプ');
       return rejectAuthentication(req, res, '無効な認証トークンです');
     }
-
-    console.log(`✅ SSO 認証成功: ${decoded.username} (${decoded.role})`);
+    let target;
+    try { target = new URL(decoded.targetUrl); } catch { throw new Error('Invalid SSO target'); }
+    if (target.origin !== origin || target.protocol !== 'https:' || target.username || target.password) {
+      throw new Error('Invalid SSO target');
+    }
+    if (!Object.hasOwn(levels, decoded.role) || levels[decoded.role] < levels[requiredRole]) {
+      return res.status(403).json({ success: false, message: 'アクセス権限がありません' });
+    }
 
     // ユーザー情報をrequestに追加
     req.user = {
