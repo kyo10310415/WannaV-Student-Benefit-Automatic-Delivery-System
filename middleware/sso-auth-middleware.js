@@ -41,8 +41,8 @@ function ssoAuthMiddleware(req, res, next) {
 
     // トークンを検証
     const origin = new URL(process.env.APP_ORIGIN || 'https://wannav-benefit-system.onrender.com').origin;
-    // The service is used by crew as well as leaders/admins.
-    const requiredRole = process.env.SSO_REQUIRED_ROLE ?? 'crew';
+    // Keep the receiver aligned with the dashboard minimum role.
+    const requiredRole = process.env.SSO_REQUIRED_ROLE ?? 'leader';
     const levels = { admin: 3, leader: 2, crew: 1 };
     if (!Object.hasOwn(levels, requiredRole)) throw new Error('SSO_REQUIRED_ROLE is required');
     const decoded = jwt.verify(token, jwtSecret, {
