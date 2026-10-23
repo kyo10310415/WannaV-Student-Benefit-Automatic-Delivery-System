@@ -31,9 +31,10 @@ test('wrong audience, issuer, target and token type rejected', () => {
     { type: 'session' }, { targetUrl: 'invalid' }
   ]) assert.equal(run(claims).status, 401);
 });
-test('default policy permits crew; invalid configuration fails closed', () => {
+test('default policy requires leader; crew requires explicit policy', () => {
   delete process.env.SSO_REQUIRED_ROLE;
-  assert.equal(run({ role: 'crew' }).passed, true);
+  assert.equal(run({ role: 'crew' }).status, 403);
+  assert.equal(run({ role: 'leader' }).passed, true);
   process.env.SSO_REQUIRED_ROLE = 'invalid';
   assert.equal(run().status, 401);
   process.env.SSO_REQUIRED_ROLE = 'crew';
