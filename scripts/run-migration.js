@@ -1,3 +1,4 @@
+const { getDatabaseConfig } = require('../src/db/connection-config');
 /**
  * データベースマイグレーション実行スクリプト
  */
@@ -7,10 +8,7 @@ const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+const pool = new Pool(getDatabaseConfig(process.env.DATABASE_URL));
 
 async function runMigration() {
   const client = await pool.connect();

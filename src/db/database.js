@@ -1,12 +1,10 @@
+const { getDatabaseConfig } = require('./connection-config');
 const { Pool } = require('pg');
 const { parseMissionNo } = require('../utils/validation');
 require('dotenv').config();
 
 // PostgreSQL接続プール
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+const pool = new Pool(getDatabaseConfig(process.env.DATABASE_URL));
 
 // データベース初期化
 async function initializeDatabase() {

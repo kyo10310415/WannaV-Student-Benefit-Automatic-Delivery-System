@@ -1,3 +1,4 @@
+const { getDatabaseConfig } = require('../src/db/connection-config');
 /**
  * 2026/2/1 17時のバッチ処理で送信されたがログが保存されなかった分を手動で修正
  * 
@@ -8,10 +9,7 @@ require('dotenv').config();
 const { Pool } = require('pg');
 const readline = require('readline');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+const pool = new Pool(getDatabaseConfig(process.env.DATABASE_URL));
 
 const rl = readline.createInterface({
   input: process.stdin,
