@@ -1,3 +1,4 @@
+process.env.DATABASE_URL = 'postgresql://fixture:fixture-only@localhost/fixture';
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const jwt = require('jsonwebtoken');

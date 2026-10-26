@@ -1,3 +1,4 @@
+const { getDatabaseConfig } = require('../src/db/connection-config');
 /**
  * 既に10日達成報酬を送信済みの生徒をデータベースに一括登録
  */
@@ -6,10 +7,7 @@ require('dotenv').config();
 const { Pool } = require('pg');
 const { google } = require('googleapis');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+const pool = new Pool(getDatabaseConfig(process.env.DATABASE_URL));
 
 // Google Sheets API初期化
 let sheetsClient = null;

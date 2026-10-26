@@ -1,3 +1,4 @@
+const { getDatabaseConfig } = require('../src/db/connection-config');
 /**
  * データベースの状態を確認するスクリプト
  */
@@ -5,10 +6,7 @@
 require('dotenv').config();
 const { Pool } = require('pg');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+const pool = new Pool(getDatabaseConfig(process.env.DATABASE_URL));
 
 async function checkDatabase() {
   const client = await pool.connect();

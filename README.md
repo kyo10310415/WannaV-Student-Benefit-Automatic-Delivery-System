@@ -332,3 +332,17 @@ WannaV VTuber育成スクール システム開発チーム
 ### SSO受信の設定（SEC-011）
 業務要件によりleader・adminが利用可能です。SSO_REQUIRED_ROLEの既定はleaderです。制限する場合だけadmin・leader・crewのいずれかを明示し、ダッシュボードのrequired_roleと一致させてください。不正値は認証を拒否します。APP_ORIGINは本サービスのHTTPS origin（既定 https://wannav-benefit-system.onrender.com）。JWT_SECRETは共有の32文字以上の秘密値を維持し、この変更だけのために単独で交換しないでください。
 先にWannaV-mainのSSO発行側修正を配備してください。受信側ではHS256・issuer=https://wannav-main.onrender.com・audience=APP_ORIGIN・targetUrlのorigin・roleを確認します。古いSSO Cookieは再ログインが必要です。バッチ自動処理やDBスキーマは変更しません。
+
+## DB接続のTLS方針（2026-10-26）
+
+実行時の接続と4つの保守スクリプト（DB確認・不足ログ修復・10日達成登録・マイグレーション）の接続設定を`src/db/connection-config.js`へ集約しました。Render上（`RENDER=true`）の短い`dpg-...`内部ホストだけは自己署名証明書を許容し、TLSを必須にします。それ以外は証明書・ホスト名の検証を要求し、失敗時に非検証や平文へ切り替えません。[Render公式の内部TLS仕様](https://render.com/docs/postgresql-creating-connecting)に合わせた限定的な例外です。
+
+非production・非Renderのローカル開発で、`localhost`/`127.0.0.1`/`[::1]`を使いURLにTLSオプションがない場合だけ、従来の平文接続を維持します。開発環境でも遠隔DBはTLS検証対象です。`DATABASE_URL`はURL本体に接続先を設定してください。`?host=`による上書きと`NODE_TLS_REJECT_UNAUTHORIZED=0`は拒否します。URLのSSL方針は共通設定で強制しますが、`sslrootcert`/`sslcert`/`sslkey`のCA・クライアント証明書/鍵ファイルは保持します。設定やファイルを読めない場合は値を含めない固定エラーになります。
+
+DBのスキーマ、SQL、認証情報、SSO権限、通知処理は変更しません。テストは合成設定と模擬境界だけを使い、実DB接続・保守ジョブ・Discord送付は行っていません。実TLSハンドシェイクと認証後の本番DB業務は別途確認が必要です。保守スクリプトの既存ログ出力や過去ログは今回の変更対象外です。
+
+### 圧縮リクエスト解析の依存更新
+
+Express配下の`body-parser`を2.3.0から2.4.0へ、既存の互換範囲内で更新しました（関連する`iconv-lite`は0.7.3）。[CVE-2026-111181 / GHSA-27r3-jxmh-p828](https://github.com/advisories/GHSA-27r3-jxmh-p828)は、圧縮された本文の末尾データによりプロセスが停止する問題で、認証前のJSON/form解析も対象です。修正版は2系2.4.0、1系1.20.9です。本サービスはSSO判定より前にExpressの本文解析を行うため更新しました。
+
+最小Express子プロセスで正常なgzip JSON/formと壊れたgzip・末尾付加gzipの後にもヘルス応答が維持されることを確認します。実サービスのDB・送付ジョブは読み込まず、本番への攻撃リクエストや負荷試験は実施していません。
