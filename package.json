@@ -22,7 +22,7 @@
   "author": "WannaV",
   "license": "ISC",
   "engines": {
-    "node": ">=20"
+    "node": ">=26.13.1 <27"
   },
   "description": "WannaV VTuber育成スクール 生徒様特典自動送付システム",
   "dependencies": {
