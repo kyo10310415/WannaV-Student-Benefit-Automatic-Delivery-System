@@ -1,6 +1,7 @@
 const { google } = require('googleapis');
 const path = require('path');
 const { parseDate } = require('../utils/dateUtils');
+const { normalizeStudentId } = require('../utils/validation');
 require('dotenv').config();
 
 // Google Sheets APIクライアント初期化
@@ -331,7 +332,7 @@ async function getMissionCompletedStudentIds(missionNo) {
 
     const ids = new Set();
     for (const row of data) {
-      const studentId = (row[colIndex] || '').trim();
+      const studentId = normalizeStudentId(row[colIndex]);
       if (studentId) ids.add(studentId);
     }
     console.log(`✅ ミッション${missionNo}提出済み: ${ids.size}件`);
