@@ -1,4 +1,5 @@
 const https = require('https');
+const { normalizeStudentId } = require('../utils/validation');
 const { sendDiscordMessage } = require('./discord');
 const { getMission1AutoSendTargets, getMissionCompletedStudentIds } = require('./googleSheets');
 const {
@@ -319,7 +320,7 @@ async function processMissionCompletionCheck() {
     console.log(`  ミッション${missionNo}: 未完了 ${targets.length}名 / 提出済み ${submittedIds.size}件`);
 
     for (const record of targets) {
-      if (submittedIds.has(record.student_id)) {
+      if (submittedIds.has(normalizeStudentId(record.student_id))) {
         try {
           await setMissionCompleted(record.student_id, missionNo, true);
           checked++;

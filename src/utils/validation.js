@@ -16,6 +16,13 @@ function parseMissionNo(value) {
   return missionNo;
 }
 
+function normalizeStudentId(value) {
+  return String(value ?? '').trim().replace(/[Ａ-Ｚａ-ｚ０-９－]/g, char =>
+    String.fromCharCode(char.charCodeAt(0) - 0xFEE0)
+  );
+}
+
 module.exports = {
-  parseMissionNo
+  parseMissionNo,
+  normalizeStudentId
 };
